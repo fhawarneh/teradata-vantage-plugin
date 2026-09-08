@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.0 (2026-09-08)
+
+- (describe the changes in this release)
+
 ## 0.1.0 (2026-09-08)
 
 First release of the `teradata-vantage` plugin — a community toolkit for working with Teradata Vantage from
