@@ -1,7 +1,7 @@
 ---
 name: teradata-sql
 description: Use when writing, correcting or reviewing any SQL that runs on Teradata Vantage, through base_readQuery/base_writeQuery or in a file. Teradata dialect rules (TOP/QUALIFY not LIMIT, IS NULL, reserved-word aliases, CAST shape, GROUP BY 3504, date math, INTERVAL literals, db.table qualification) plus error-code-driven repair.
-when_to_use: Any Teradata SQL authoring or repair; a tool result containing "Error NNNN" (3706, 3707, 3504, 3807, 5628, 3810, 2666, 5407, 2616, 6706, 6916, 7453, 3541); "top 10 rows", "last 90 days", "rows where X is null", "why does LIMIT fail", "Syntax error, expected something like", "reserved word", "Selected non-aggregate values".
+when_to_use: Any Teradata SQL authoring or repair; a tool result containing "Error NNNN" (3706, 3707, 3504, 3807, 5628, 3810, 2666, 5407, 2616, 6706, 6916, 7453, 3541); "top 10 rows", "last 90 days", "rows where X is null", "why does LIMIT fail", "Syntax error, expected something like", "reserved word", "Selected non-aggregate values"; porting SQL from Postgres, Oracle or Snowflake; "MERGE fails 5758".
 license: MIT
 user-invocable: false
 allowed-tools:
@@ -156,11 +156,9 @@ QUALIFY ROW_NUMBER() OVER (PARTITION BY a ORDER BY x DESC) <= 3;
 - A child database is carved from its PARENT's unallocated PERM, so `CREATE DATABASE ... AS PERM = n`
   fails with `Error 3541` when the parent has less than n free — it reads like syntax and means "no
   room". Diagnose on the parent, not the system total; the `health` skill has the full treatment.
-- `SAMPLE n` / `SAMPLE 0.10` returns RANDOM rows (stratified: `SAMPLE 0.05, 0.10`) — for profiling,
-  never for a "top" question.
-- `LOCKING ROW FOR ACCESS SELECT ...` (dirty read) is the DBA idiom for reading a table under load.
-  It does not start with `SELECT`, so `base_readQuery` denies it; use `base_writeQuery` (not a
-  destructive verb, so no prompt) or a script.
+- `SAMPLE n` returns RANDOM rows — for profiling, never for a "top" question.
+- `LOCKING ROW FOR ACCESS SELECT ...` (dirty read) reads a table under load. It does not start with
+  `SELECT`, so `base_readQuery` denies it; use `base_writeQuery` (no prompt) or a script.
 - Formatting belongs to display: `col (FORMAT 'zz9.99%')`, `d (FORMAT 'YYYY-MM-DD')`, or `TO_CHAR`.
 - After loading or changing a large table: `COLLECT STATISTICS COLUMN (pi_col), COLUMN (join_col) ON
   <db>.<table>;`. An EXPLAIN that says "no confidence" is the optimizer telling you stats are missing.
@@ -312,5 +310,7 @@ catalog lookup, never a change to what the user asked.
 - `references/reserved-words.md` — words that fail as aliases, substitutions, quoting rules.
 - `references/dbc-dictionary.md` — catalog SQL: DBCInfoV, DatabasesV, TablesV (TableKind codes),
   ColumnsV (ColumnType decode), IndicesV, space views, DBQL, sessions, rights.
+- `references/porting-sql.md` — 54 constructs from other dialects, each run live: what works, what
+  fails with which code, and the MERGE primary-index rule.
 - `references/physical-design.md` — SET vs MULTISET, choosing a primary index and reading skew,
   `PARTITION BY RANGE_N` and partition elimination, volatile / global temporary tables, statistics.

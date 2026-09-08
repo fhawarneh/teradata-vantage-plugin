@@ -1,7 +1,7 @@
 ---
 name: vector-store
 description: Use when creating, inspecting, searching, updating, repairing or destroying a Teradata Enterprise Vector Store through the tdvs_* tools, or for vector work directly in the database (VECTOR32, TD_VECTORDISTANCE, in-database ONNX embeddings). Covers the mandatory target_database rule, the embeddings model/base-URL pairing, legal search algorithms, the vectorstore_* layout and CREATE FAILED repair.
-when_to_use: create a vector store; semantic or similarity search over <db>.<table>; RAG on Teradata; tdvs; embed this table; vector store stuck in CREATE FAILED or CREATING; why does tdvs_create fail with 3524; HNSW vs KMEANS; TD_VECTORDISTANCE; ONNXEmbeddings or BYOM embeddings; Vector32 column; grant a user access to the vector store.
+when_to_use: create a vector store; semantic or similarity search over <db>.<table>; RAG on Teradata; tdvs; embed this table; vector store stuck in CREATE FAILED or CREATING; why does tdvs_create fail with 3524; HNSW vs KMEANS; TD_VECTORDISTANCE; ONNXEmbeddings or BYOM embeddings; Vector32 column; grant a user access to the vector store; rag_Execute_Workflow; RAG on Teradata.
 license: MIT
 metadata:
   skill_type: workflow
@@ -193,3 +193,9 @@ They do not grant database SELECT on the source table — that stays a normal `G
 State measured facts: store name, status, target database, embedding model + dims, metric, algorithm, index
 row count vs source row count. NEVER claim a store is ready without `vs_status = READY`; NEVER claim an ingest
 succeeded without a row count; NEVER report a missing V2 view as an outage.
+
+## References
+- `references/tdvs-create-params.md` — full `tdvs_create` field list with types.
+- `references/in-database-vectors.md` — `VECTOR32`, `TD_VECTORDISTANCE`, and BYOM embeddings without a store.
+- `references/rag-workflow.md` — `rag_Execute_Workflow`: it retrieves over a corpus someone else embedded,
+  is driven by a config file inside the server package, and writes a query table. Read before recommending it.
