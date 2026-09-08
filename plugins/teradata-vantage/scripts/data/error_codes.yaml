@@ -1,0 +1,385 @@
+# teradata-vantage plugin — single source of truth for Teradata error-code coaching.
+#
+# Consumed by:
+#   scripts/hooks/result_coach.py          (PostToolUse / PostToolUseFailure "what it actually means" note)
+#   scripts/render_references.py           (generates skills/teradata-sql/references/error-codes.md)
+#   scripts/validate_plugin.py             (every `skill:` must name a directory under skills/)
+#
+# Schema (one list item per code):
+#   code:             int    Teradata error code exactly as it appears in "[Error NNNN]"
+#   message_fragment: str    a distinctive substring of the real message text (used for matching and display)
+#   area:             enum   dialect | space | nos | otf | tdvs | security | connection | recovery
+#   means:            str    one sentence: what the message actually means (not what it says)
+#   action:           str    one imperative sentence
+#   skill:            str    the plugin skill to consult (bare skill name)
+#   confirmed:        bool   true only when the message text was verified against Teradata documentation or a
+#                            real, quoted message captured on a live system; false = code observed, text not
+#                            verified. Unconfirmed codes render in a separate "reported but unverified" section
+#                            and the coaching hook prefixes them with "(unverified)".
+#
+# Text authored from Teradata documentation is marked "(from Teradata documentation; verify against your
+# release)" in the rendered reference. Keep this file free of database, host, user and product-internal names.
+
+errors:
+  # ---------------------------------------------------------------- dialect
+  - code: 2616
+    message_fragment: "Numeric overflow occurred during computation"
+    area: dialect
+    means: The result type is too narrow for the value — a small DECIMAL precision, or DECIMAL arithmetic inside a statistic such as STDDEV_POP or a wide SUM.
+    action: Use DECIMAL(18,2) for money and totals, and CAST the inputs of statistical functions to FLOAT before computing.
+    skill: teradata-sql
+    confirmed: true
+
+  - code: 2666
+    message_fragment: "Invalid date supplied"
+    area: dialect
+    means: A string cast to DATE is not a plain YYYY-MM-DD — it carries a time component or a non-date value.
+    action: Use TRYCAST(SUBSTRING(col FROM 1 FOR 10) AS DATE) on string timestamps and count the NULLs it produces.
+    skill: teradata-sql
+    confirmed: true
+
+  - code: 3504
+    message_fragment: "Selected non-aggregate values must be part of the associated group"
+    area: dialect
+    means: A column in the select list is neither aggregated nor listed in GROUP BY.
+    action: Add the column to GROUP BY (positional GROUP BY 1, 2 is fine) or wrap it in an aggregate.
+    skill: teradata-sql
+    confirmed: true
+
+  - code: 3532
+    message_fragment: "Conversion between BYTE data and other types is illegal"
+    area: dialect
+    means: A BYTE/VARBYTE value (typically the output of HASHROW) was CAST or compared to a numeric or character type.
+    action: Use HASHBUCKET(HASHROW(...)) for an INTEGER, or FROM_BYTES(HASHROW(...), 'base10') for a number; never CAST(HASHROW(...) AS BIGINT).
+    skill: teradata-sql
+    confirmed: false
+
+  - code: 3535
+    message_fragment: "A character string failed conversion to a numeric value"
+    area: dialect
+    means: A string literal was compared to or inserted into a numeric column — commonly '1' against a BYTEINT flag.
+    action: Check the column type; compare BYTEINT/INTEGER flags with unquoted 1/0 and VARCHAR flags with quoted '1'/'0'.
+    skill: teradata-sql
+    confirmed: false
+
+  - code: 3654
+    message_fragment: "Corresponding select-list expressions are incompatible"
+    area: dialect
+    means: The branches of a UNION/UNION ALL do not line up — a different column count, order or incompatible types (a SELECT * across a base table and a foreign or Iceberg table is the usual cause).
+    action: Project explicit columns in every branch and CAST the external side to the base table's declared types.
+    skill: archive
+    confirmed: false
+
+  - code: 3706
+    message_fragment: "Syntax error"
+    area: dialect
+    means: The parser found a token where a data type, keyword or name was required — an alias inside CAST, LIMIT/FETCH FIRST, an alias with a space, a missing parenthesis — or the text names a feature that is not enabled on this system.
+    action: Fix the named token — close CAST(... AS <type>) before the alias, use TOP/QUALIFY instead of LIMIT — or read the rest of the message for the disabled feature.
+    skill: teradata-sql
+    confirmed: true
+
+  - code: 3707
+    message_fragment: "Syntax error, expected something like"
+    area: dialect
+    means: A lexical problem — a reserved word used as an alias, VARCHAR without a length, comma-form SUBSTRING, or a function that does not exist in Teradata (MONTH(), YEAR(), DATEDIFF).
+    action: Rename the alias, add the VARCHAR length, use SUBSTRING(col FROM 1 FOR n), and use EXTRACT/ADD_MONTHS for date parts.
+    skill: teradata-sql
+    confirmed: true
+
+  - code: 3760
+    message_fragment: "String not terminated before end of text"
+    area: dialect
+    means: A single-quoted string literal was never closed, often because an embedded quote was not doubled.
+    action: Close the literal and write embedded quotes as two single quotes ('O''Brien').
+    skill: teradata-sql
+    confirmed: true
+
+  - code: 3771
+    message_fragment: "Illegal expression in WHEN clause"
+    area: dialect
+    means: A subquery (x IN (SELECT ...)) appears inside a CASE WHEN, which Teradata does not allow.
+    action: Move the test to a scalar subquery in the select list or a LEFT JOIN with an IS NULL check.
+    skill: teradata-sql
+    confirmed: true
+
+  - code: 3802
+    message_fragment: "Database"
+    area: dialect
+    means: The database named in the statement does not exist on this system — a typo, the wrong system, or a CREATE DATABASE that failed earlier without being noticed.
+    action: Confirm the name with base_databaseList; if it should exist, check the parent's PermSpace for a swallowed 3541.
+    skill: explore
+    confirmed: true
+
+  - code: 3803
+    message_fragment: "already exists"
+    area: dialect
+    means: A CREATE ran against an object name that already exists in that database.
+    action: Use a deterministic name and DROP-then-CREATE (ignoring 3807 on the DROP), or pick a new name; never loop on random names.
+    skill: teradata-sql
+    confirmed: true
+
+  - code: 3807
+    message_fragment: "Object"
+    area: dialect
+    means: No object with that name exists in the database the statement resolved it to — an unqualified name, a typo, or a name that changed between the steps of a task.
+    action: Qualify every reference as <db>.<table>, confirm with base_tableList, and reuse one deterministic name across steps.
+    skill: teradata-sql
+    confirmed: true
+
+  - code: 3809
+    message_fragment: "is ambiguous"
+    area: dialect
+    means: The column exists on more than one table in the join and was referenced without a table alias.
+    action: Alias every table and qualify the column (t.status); never use JOIN ... USING.
+    skill: teradata-sql
+    confirmed: true
+
+  - code: 3810
+    message_fragment: "Column/Parameter"
+    area: dialect
+    means: The column or parameter does not exist on that table, view or macro.
+    action: Call base_tableDDL or base_columnDescription on the object in the same turn, then retry with the real name.
+    skill: teradata-sql
+    confirmed: true
+
+  - code: 3822
+    message_fragment: "Cannot resolve column"
+    area: dialect
+    means: A bare column name cannot be matched to any table in the FROM clause — usually a JOIN was dropped or the column lives on a table you did not join.
+    action: Qualify the column with its table alias and add the missing JOIN.
+    skill: teradata-sql
+    confirmed: true
+
+  - code: 3853
+    message_fragment: "is not a table"
+    area: dialect
+    means: SHOW TABLE (what base_tableDDL runs) was pointed at a view or other non-table object.
+    action: Use SHOW VIEW <db>.<view> via base_readQuery, or HELP TABLE for the column list.
+    skill: explore
+    confirmed: true
+
+  - code: 5404
+    message_fragment: "Datetime field overflow"
+    area: dialect
+    means: A datetime component does not fit the target type — most often microseconds into TIMESTAMP(0), sometimes an out-of-range value from an external source.
+    action: Truncate fractional seconds before the insert or declare TIMESTAMP(6); on external reads, project explicit columns and CAST them.
+    skill: teradata-sql
+    confirmed: true
+
+  - code: 5407
+    message_fragment: "Invalid operation for DateTime or Interval"
+    area: dialect
+    means: A string operation (SUBSTRING, LIKE, concatenation) was applied to a real DATE, TIME, TIMESTAMP or INTERVAL column.
+    action: Use CAST(col AS DATE) or TO_CHAR/EXTRACT on typed columns; reserve SUBSTRING for string-typed dates.
+    skill: teradata-sql
+    confirmed: true
+
+  - code: 5612
+    message_fragment: "already exists"
+    area: dialect
+    means: A CREATE DATABASE/USER/ROLE/PROFILE ran against a name that already exists.
+    action: Treat it as idempotent success when the existing object is the intended one; do not use it as a catch-all that hides 3541 (no space).
+    skill: health
+    confirmed: false
+
+  - code: 5628
+    message_fragment: "not found in table"
+    area: dialect
+    means: The column does not exist on that table.
+    action: Call base_tableDDL on the table in the same turn and retry with a column that exists; never guess a second name.
+    skill: teradata-sql
+    confirmed: true
+
+  - code: 6706
+    message_fragment: "The string contains an untranslatable character"
+    area: dialect
+    means: Text containing a character outside the LATIN repertoire (em-dash, curly quotes, NBSP, non-Latin scripts) was written to a LATIN column or session.
+    action: Declare the column CHARACTER SET UNICODE, or fold the text to Latin before the write.
+    skill: teradata-sql
+    confirmed: true
+
+  - code: 6916
+    message_fragment: "TOP N Syntax error"
+    area: dialect
+    means: TOP n was combined with DISTINCT, QUALIFY, SAMPLE or a WITH ... BY subtotal clause in the same SELECT; the message names which one. ORDER BY with TOP is allowed.
+    action: Use only one of them. For top-N prefer QUALIFY ROW_NUMBER() OVER (...) <= n on its own, since it composes with GROUP BY and window functions; keep TOP only by moving the DISTINCT, SAMPLE or WITH clause into a derived table and applying TOP outside it.
+    skill: teradata-sql
+    confirmed: true
+
+  # ---------------------------------------------------------------- space
+  - code: 2644
+    message_fragment: "No more room in database"
+    area: space
+    means: The named database has no PERM left; when the database is DBC, the transient journal cannot grow and every data-writing statement on the system fails.
+    action: For DBC, purge the pure log tables (ResUsage*, EventLog, SW_Event_Log, TDWMSummaryLog) per the health skill; for a user database, raise its PERM or remove data.
+    skill: health
+    confirmed: true
+
+  - code: 3541
+    message_fragment: "The request to assign new PERMANENT space is invalid"
+    area: space
+    means: The parent database does not have the requested amount of unallocated PERM — the message reads like syntax and means "no room".
+    action: Check PermSpace on the PARENT in DBC.DatabasesV, then MODIFY DATABASE <parent> AS PERM = n or request less.
+    skill: health
+    confirmed: true
+
+  # ---------------------------------------------------------------- security
+  - code: 3523
+    message_fragment: "does not have"
+    area: security
+    means: The session user lacks the named right on that specific object; a grant on the parent database does not cascade to a child database created later.
+    action: Grant the right on the database or object actually read, then verify with sec_userDbPermissions.
+    skill: health
+    confirmed: true
+
+  - code: 3524
+    message_fragment: "does not have CREATE TABLE access to database"
+    area: security
+    means: The user cannot create tables in that database — always true for DBC, for everyone.
+    action: Point the CREATE (or a vector-store target_database) at a normal working database.
+    skill: vector-store
+    confirmed: true
+
+  - code: 5315
+    message_fragment: "does not have SELECT WITH GRANT OPTION access"
+    area: security
+    means: The view's owner (the database that contains the view, not the connected user) lacks SELECT WITH GRANT OPTION on an object the view references.
+    action: GRANT SELECT ON <source_db> TO <view_db> WITH GRANT OPTION, then re-create the view.
+    skill: health
+    confirmed: true
+
+  - code: 9203
+    message_fragment: "CONNECT THROUGH"
+    area: security
+    means: A proxy connection (SET QUERY_BAND ... PROXYUSER) was attempted without a matching GRANT CONNECT THROUGH; there is no exemption for a user proxying as itself.
+    action: GRANT CONNECT THROUGH <trusted_user> TO PERMANENT <proxy_user>, or remove the PROXYUSER query band.
+    skill: setup
+    confirmed: false
+
+  # ---------------------------------------------------------------- nos (object storage)
+  - code: 4969
+    message_fragment: "Couldn't resolve host name"
+    area: nos
+    means: The external object store in a LOCATION or WRITE_NOS call could not be reached — a bucket.host path shape, a wrong endpoint, or an HTTPS attempt against an HTTP endpoint (the same code carries "SSL connect error" / "SSL wrong version number").
+    action: Use a path-style LOCATION ('/s3/<host>/<bucket>/'), confirm the endpoint, and match the scheme (HTTP vs HTTPS) to the store.
+    skill: archive
+    confirmed: true
+
+  - code: 6881
+    message_fragment: "Only Simplified Authorization object is allowed"
+    area: nos
+    means: WRITE_NOS was given a TRUSTED/DEFINER authorization; it accepts only a simplified AUTHORIZATION object.
+    action: Create a second, simplified AUTHORIZATION over the same credentials for WRITE_NOS; keep the trusted one for CREATE FOREIGN TABLE.
+    skill: archive
+    confirmed: true
+
+  - code: 6938
+    message_fragment: "does not exist"
+    area: nos
+    means: The AUTHORIZATION object named in the statement does not exist in the database where the object resolves it — for a deliberately bogus name this is the expected result and proves the feature is enabled.
+    action: Create the authorization in the same database as the foreign table, or read it as a positive enablement signal when probing.
+    skill: archive
+    confirmed: true
+
+  - code: 6953
+    message_fragment: "does not match"
+    area: nos
+    means: The authorization's definition (kind or security type) does not match what the statement requires — a simplified authorization passed where a TRUSTED one is needed, or the reverse.
+    action: Use the trusted authorization (unqualified name) for CREATE FOREIGN TABLE and the simplified one (db-qualified) for WRITE_NOS.
+    skill: archive
+    confirmed: true
+
+  # ---------------------------------------------------------------- otf (Iceberg / open table format)
+  - code: 4893
+    message_fragment: "PURGE"
+    area: otf
+    means: DROP TABLE on an open-table-format table was issued without the required PURGE ALL / NO PURGE clause.
+    action: Write DROP TABLE <datalake>.<db>.<t> PURGE ALL (removes object-store files) or NO PURGE (keeps them).
+    skill: archive
+    confirmed: false
+
+  - code: 5589
+    message_fragment: "Function"
+    area: otf
+    means: The referenced system function (for example TD_ICEBERG_READ) is not installed — open table format support is absent on this system.
+    action: Install and enable the OTF feature per the archive skill's enablement reference before retrying.
+    skill: archive
+    confirmed: true
+
+  - code: 7454
+    message_fragment: "DateTime field overflow"
+    area: otf
+    means: A microsecond TIMESTAMP read from an external table was CAST directly to TIMESTAMP(0).
+    action: Bridge through a string — CAST(CAST(ts AS VARCHAR(19)) AS TIMESTAMP(0)).
+    skill: archive
+    confirmed: false
+
+  - code: 7825
+    message_fragment: "in UDF/XSP/UDM"
+    area: otf
+    means: An external routine (the OTF connector) raised an error; the text after SQLSTATE is the real cause — "Table was created concurrently" is a catalog version-skew defect, and dropping a non-existent OTF table also surfaces as this code rather than a clean 3807.
+    action: Read the SQLSTATE text; tolerate it on idempotent pre-drops; treat the "created concurrently" form as a catalog/version problem, not a retry candidate.
+    skill: archive
+    confirmed: true
+
+  - code: 9134
+    message_fragment: "VIEW"
+    area: otf
+    means: CREATE VIEW over an open-table-format (Iceberg/Delta) table is not supported.
+    action: Federate hot and cold data with a UNION ALL query, not a view.
+    skill: archive
+    confirmed: false
+
+  - code: 9723
+    message_fragment: "TD_SNAPSHOTS"
+    area: otf
+    means: The TD_SNAPSHOTS table operator was invoked with a column subset or COUNT(*); it supports only SELECT *.
+    action: SELECT * FROM TD_SNAPSHOTS (ON <otf_table>) AS d and filter/count in an outer query.
+    skill: archive
+    confirmed: false
+
+  # ---------------------------------------------------------------- connection
+  - code: 8017
+    message_fragment: "The UserId, Password or Account is invalid"
+    area: connection
+    means: >-
+      The logon itself was refused. The database is up and reachable — it answered — so this is a credential, not a
+      network or health problem. A wrong password, a wrong LOGMECH (TD2 vs LDAP), a locked or expired account, or a
+      DATABASE_URI whose user is not the one you think all produce it identically.
+    action: >-
+      Re-check the user and password in the credential source the doctor reports (plugin option, DATABASE_URI, or the
+      0600 teradata.env), and confirm LOGMECH matches how the account authenticates. Never paste the connection
+      string into the conversation to check it.
+    skill: setup
+    confirmed: true
+
+  - code: 7453
+    message_fragment: "Interval field overflow"
+    area: dialect
+    means: >-
+      An INTERVAL value did not fit a DECLARED INTERVAL type — a column, parameter or CAST target whose leading
+      precision defaults to 2 digits. It is NOT caused by a wide INTERVAL literal; a literal is sized from its own
+      digits up to 4, so `INTERVAL '365' DAY` computes correctly and five or more digits raise 3706 instead.
+    action: Widen the declared target — `CAST(x AS INTERVAL DAY(4))` — or use integer-day arithmetic on a DATE.
+    skill: teradata-sql
+    confirmed: true
+
+  - code: 444
+    message_fragment: "unable to connect"
+    area: connection
+    means: >-
+      The client never reached the database. A firewall that DROPS rather than rejects makes this hang until the
+      timeout instead of failing fast, so a long pause before the error is the signature of a blocked port rather
+      than a wrong host.
+    action: Prove reachability to port 1025 independently of the plugin before changing any credential; then re-run the doctor.
+    skill: setup
+    confirmed: false
+
+  # ---------------------------------------------------------------- recovery (host-level signature, not a SQL error)
+  - code: 5148
+    message_fragment: "crashcode 5148"
+    area: recovery
+    means: An AMP is crashing while writing the system event log (seen in the node's system log as "AMP n crashcode 5148 on DBC.SW_Event_Log"); if it recurs during startup recovery no session can ever be established.
+    action: Follow the teradata-recovery triage — test with logons disabled before attempting any SQL remedy; requires OS access to the Teradata node.
+    skill: teradata-recovery
+    confirmed: true

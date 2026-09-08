@@ -1,0 +1,44 @@
+name: Feature request
+description: A skill, agent, workflow, hook or tool profile the plugin should have.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This plugin covers generic Teradata Vantage work. It deliberately carries no site-specific content: no
+        customer or demonstration database names, no host addresses, no credentials. Anything proposed must be
+        usable by a stranger against their own system.
+  - type: textarea
+    id: task
+    attributes:
+      label: The task you want to do
+      description: What you are trying to get done in Teradata, and what the plugin does today instead.
+    validations:
+      required: true
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Which surface would carry it
+      options:
+        - skill (knowledge Claude loads when it applies)
+        - agent (a delegated sub-task with its own tool set)
+        - workflow (a multi-step, read-only report)
+        - hook (a guard or a prompt before something happens)
+        - tool profile (which server tools are exposed)
+        - not sure
+    validations:
+      required: true
+  - type: textarea
+    id: shape
+    attributes:
+      label: What good output would look like
+      description: A worked example — the request, and the answer or report you would want back.
+    validations:
+      required: false
+  - type: checkboxes
+    id: writes
+    attributes:
+      label: Does it write to the database?
+      options:
+        - label: This would need a statement that changes data or objects (so it needs an approval gate).
+          required: false

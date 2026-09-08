@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "teradata-vantage",
+  "displayName": "Teradata Vantage Toolkit (Community)",
+  "version": "0.1.0",
+  "description": "Teradata Vantage toolkit for Claude Code. Bundles the open-source teradata-mcp-server 0.2.6 (MIT), installs it locally on request, or bridges to a server you already run. Adds Teradata SQL, exploration, tuning, data-quality, DBA health and recovery, NOS/Iceberg archiving and vector-store skills, six agents and four read-only workflows. Hooks guard reads, prompt before destructive writes and tools, and lint .sql files; two run only when a Teradata connection is configured (Teradata host-admin shell commands, and an optional pasted-credential warning that is off by default). Guards are mistake-prevention, not a security boundary. Ships a local health monitor that the health skill arms when a stored credential file exists; TERADATA_MONITORS=0 disables it. No telemetry; connects only to the Teradata system and MCP server you configure, and to PyPI/npm only when you explicitly install the local server. Community plugin, not affiliated with or endorsed by Teradata Corporation.",
+  "author": {
+    "name": "Vantage Toolkit Contributors",
+    "email": "fhawarneh@gmail.com"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/fhawarneh/teradata-vantage-plugin/blob/main/plugins/teradata-vantage/README.md",
+  "repository": "https://github.com/fhawarneh/teradata-vantage-plugin",
+  "keywords": [
+    "teradata",
+    "vantage",
+    "sql",
+    "dba",
+    "mcp",
+    "data-quality",
+    "vector-store",
+    "iceberg",
+    "nos",
+    "clearscape"
+  ],
+  "userConfig": {
+    "database_uri": {
+      "type": "string",
+      "title": "Teradata DATABASE_URI",
+      "description": "Connection string for the bundled MCP server: teradata://user:password@host:1025/database (LOGMECH TD2 by default). Leave empty if you set the DATABASE_URI environment variable, use /teradata-vantage:setup connect, or bridge to an existing server via mcp_url.",
+      "sensitive": true,
+      "required": false,
+      "default": ""
+    },
+    "mcp_url": {
+      "type": "string",
+      "title": "Existing Teradata MCP server URL (optional)",
+      "description": "If you already run teradata-mcp-server over streamable-http (for example http://127.0.0.1:8001/mcp/), set its URL here and the plugin bridges to it instead of starting a local server. Treated as sensitive because a URL can carry credentials in its userinfo; the plugin only ever reports its host part.",
+      "sensitive": true,
+      "required": false,
+      "default": ""
+    },
+    "server_extras": {
+      "type": "string",
+      "title": "Local server extras (optional)",
+      "description": "Comma-separated optional extras installed with the local server: tdvs (Teradata Enterprise Vector Store tools, ~170 MB more dependencies), bar (DSA backup tools). Leave empty for the core server.",
+      "required": false,
+      "default": ""
+    },
+    "enable_prompt_secret_guard": {
+      "type": "boolean",
+      "title": "Warn when a connection string with a password is pasted into a prompt",
+      "description": "Off by default. When on, and only in sessions where a Teradata connection is configured, the plugin warns if a prompt contains a scheme://user:password@ URI so credentials do not land in the transcript.",
+      "required": false,
+      "default": false
+    }
+  }
+}

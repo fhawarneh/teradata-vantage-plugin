@@ -1,0 +1,84 @@
+# teradata-vantage plugin — canonical list of Teradata system databases and users to EXCLUDE when enumerating
+# "user" databases (backups, profiling fan-out, health audits, drop-impact object resolution).
+#
+# Union of two lists: the exclusion set used by the bundled server's base_databaseList tool (scope=user) and the
+# exclusion set of the logical-backup script shipped under scripts/ops/. Teradata object names are case-insensitive;
+# compare with UPPER(). Entries under `like_prefixes` are matched as `DatabaseName NOT LIKE '<prefix>%'`.
+# Names marked "(release-dependent)" exist only on some Vantage releases or with optional features installed
+# (from Teradata documentation; verify against your release).
+#
+# Consumers: scripts/ops/td_logical_backup.py (ALL_USER mode), workflows/health-audit.js and profile-database.js
+# (discovery stage), skills/explore/references/dbc-catalog.md (rendered list).
+
+version: 1
+system_databases:
+  - DBC
+  - SYSLIB
+  - SYSUDTLIB
+  - SYSJDBC
+  - SYSSPATIAL
+  - SYSBAR
+  - SYSUIF
+  - SysAdmin
+  - SystemFe
+  - Sys_Calendar
+  - SQLJ
+  - TDQCD
+  - TDStats
+  - TDMaps
+  - TDPUSER
+  - TDBCMgmt
+  - TDSYSFLOW
+  - TDaaS_DB
+  - TD_SYSFNLIB
+  - TD_SYSGPL
+  - TD_SYSXML
+  - TD_SYSAI                # Enterprise Vector Store catalog (release-dependent)
+  - TD_SERVER_DB
+  - TD_ANALYTICS_DB
+  - TD_MLDB                 # (release-dependent)
+  - TD_VAL                  # (release-dependent)
+  - TD_OTFDB                # Open Table Format / DATALAKE service database (release-dependent)
+  - TD_DATASHARING_REPO
+  - TD_METRIC_SVC
+  - tdwm
+  - dbcmngr
+  - Crashdumps
+  - LockLogShredder
+  - EXTUSER
+  - External_AP
+  - console
+  - DEFAULT
+  - All
+  - PUBLIC
+  - SAS_SYSFNLIB
+  - mldb                    # (release-dependent)
+  - val                     # (release-dependent)
+  - PDCRADM
+  - PDCRAdmin
+  - PDCRDATA
+  - PDCRINFO
+  - PDCRSTG
+  - PDCRTPCD
+
+# Excluded by prefix: managed-service databases.
+like_prefixes:
+  - TDaaS
+
+# Rows owned by this user are excluded as well (the server's tool filters `OwnerName <> 'PDCRADM'`).
+exclude_owners:
+  - PDCRADM
+
+# SQL that reproduces the filter (parameter-free; paste into base_readQuery):
+sql_example: |
+  SELECT DatabaseName, DBKind, PermSpace, CommentString
+  FROM DBC.DatabasesV
+  WHERE OwnerName <> 'PDCRADM'
+    AND DatabaseName NOT LIKE 'TDaaS%'
+    AND UPPER(DatabaseName) NOT IN (
+      'DBC','SYSLIB','SYSUDTLIB','SYSJDBC','SYSSPATIAL','SYSBAR','SYSUIF','SYSADMIN','SYSTEMFE','SYS_CALENDAR',
+      'SQLJ','TDQCD','TDSTATS','TDMAPS','TDPUSER','TDBCMGMT','TDSYSFLOW','TDAAS_DB','TD_SYSFNLIB','TD_SYSGPL',
+      'TD_SYSXML','TD_SYSAI','TD_SERVER_DB','TD_ANALYTICS_DB','TD_MLDB','TD_VAL','TD_OTFDB','TD_DATASHARING_REPO',
+      'TD_METRIC_SVC','TDWM','DBCMNGR','CRASHDUMPS','LOCKLOGSHREDDER','EXTUSER','EXTERNAL_AP','CONSOLE','DEFAULT',
+      'ALL','PUBLIC','SAS_SYSFNLIB','MLDB','VAL','PDCRADM','PDCRADMIN','PDCRDATA','PDCRINFO','PDCRSTG','PDCRTPCD')
+  ORDER BY DatabaseName

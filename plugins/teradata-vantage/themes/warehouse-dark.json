@@ -1,0 +1,27 @@
+{
+  "name": "Warehouse Dark",
+  "base": "dark",
+  "overrides": {
+    "claude": "#f97316",
+    "claudeShimmer": "#fdba74",
+    "promptBorder": "#c2410c",
+    "promptBorderShimmer": "#fb923c",
+    "permission": "#fb923c",
+    "permissionShimmer": "#fed7aa",
+    "planMode": "#38bdf8",
+    "autoAccept": "#a3e635",
+    "bashBorder": "#facc15",
+    "warning": "#f59e0b",
+    "warningShimmer": "#fcd34d",
+    "error": "#ef4444",
+    "success": "#22c55e",
+    "suggestion": "#fdba74",
+    "remember": "#fb923c",
+    "diffAdded": "#14532d",
+    "diffRemoved": "#7f1d1d",
+    "diffAddedWord": "#166534",
+    "diffRemovedWord": "#991b1b",
+    "rate_limit_fill": "#f97316",
+    "briefLabelClaude": "#f97316"
+  }
+}

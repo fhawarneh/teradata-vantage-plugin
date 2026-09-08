@@ -1,0 +1,14 @@
+dist/
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
+*.env
+# `!config/sqlfluff-teradata.cfg` used to sit here. It never did anything: no pattern above ignores a
+# `.cfg`, and a negation containing a slash is anchored to THIS directory, so it could not have reached
+# the plugin's copy at plugins/teradata-vantage/config/ in any case. Verified with `git check-ignore`.
+# A pattern containing a slash is anchored to THIS directory, so a bare `evals/results/` would
+# only match at the repository root and would commit the plugin's eval run artifacts.
+**/evals/results/
+.DS_Store

@@ -1,0 +1,98 @@
+# teradata-vantage plugin — inventory of the bundled Teradata MCP server (upstream teradata-mcp-server 0.2.6).
+# CAPTURED LIVE from the vendored wheel running with PROFILE=tv_all, CONFIG_DIR=config/, no extras, on 2026-09-05
+# (tools/list + prompts/list + resources/list). Groups whose tools register only with extras or extra env are listed
+# from the upstream source. Used by validate_plugin.py (agent tool cross-check), the destructive-tool hook and the
+# generated skills/setup/references/tool-inventory.md. Regenerate with scripts/render_references.py --capture.
+package: teradata-mcp-server
+verified_version: "0.2.6"
+wheel_sha256: "8e93870a76231bd736f0369d3a085f1d78814c38466fd36534ba183eac63422c"
+server_key: teradata
+tool_prefix: mcp__plugin_teradata-vantage_teradata__
+captured_live: true
+live_core_tool_count: 47
+groups:
+  base:
+    extra: null
+    tools: [base_columnDescription, base_columnMetadata, base_databaseList, base_readQuery, base_saveDDL, base_tableAffinity, base_tableDDL, base_tableList, base_tablePreview, base_tableUsage]
+    prompts: [base_query, base_tableBusinessDesc, base_databaseBusinessDesc]
+  dba:
+    extra: null
+    tools: [dba_databaseSpace, dba_databaseVersion, dba_featureUsage, dba_flowControl, dba_resusageSummary, dba_sessionInfo, dba_systemSpace, dba_tableSpace, dba_tableSqlList, dba_tableUsageImpact, dba_userDelay, dba_userSqlList]
+    prompts: [dba_tableArchive, dba_databaseLineage, dba_tableDropImpact, dba_databaseHealthAssessment, dba_userActivityAnalysis, dba_systemVoice]
+  sec:
+    extra: null
+    tools: [sec_rolePermissions, sec_userDbPermissions, sec_userRoles]
+    prompts: []
+  qlty:
+    extra: null
+    tools: [qlty_columnSummary, qlty_distinctCategories, qlty_missingValues, qlty_negativeValues, qlty_rowsWithMissingValues, qlty_standardDeviation, qlty_univariateStatistics]
+    prompts: [qlty_databaseQuality]
+  plot:
+    extra: null
+    tools: [plot_line_chart, plot_pie_chart, plot_polar_chart, plot_radar_chart]
+    prompts: []
+  rag:
+    extra: null
+    tools: [rag_Execute_Workflow]
+    prompts: []
+    notes: >-
+      rag_Execute_Workflow WRITES: it creates the query table if absent, INSERTs the question into it, then DROPs
+      and re-creates the query-embedding table in the configured RAG database (teradata_mcp_server/tools/rag/rag_tools.py)
+  sql_opt:
+    extra: null
+    tools: [sql_Analyze_Cluster_Stats, sql_Execute_Full_Pipeline, sql_Retrieve_Cluster_Queries]
+    prompts: []
+    notes: >-
+      sql_Execute_Full_Pipeline WRITES: it DROPs and re-creates seven tables in the configured feature database
+      (default feature_ext_db, teradata_mcp_server/config/sql_opt_config.yml) and can run for minutes; the other two
+      only read those tables. All three need read access to DBC.DBQLSqlTbl / DBC.DBQLogTbl and in-database
+      embedding models.
+  graph:
+    extra: null
+    tools: [graph_analyseDatabase, graph_bfsLevels, graph_connectedComponents, graph_detectCycles, graph_edgeContractDDL, graph_findRootObjects, graph_traceLineage]
+    prompts: []
+    notes: operates on an edge-repository table conforming to the graph://edge-contract resource
+  chat:
+    extra: null
+    tools: [chat_completeChat, chat_aggregatedCompleteChat]
+    prompts: [chat_ai_mapreduce]
+    notes: tools register only when the OpenAI-compatible CompleteChat table operator is installed in the database and CHAT_API_KEY is set; the prompt is always listed
+  tdvs:
+    extra: tdvs
+    tools: [tdvs_ask, tdvs_create, tdvs_destroy, tdvs_get_details, tdvs_get_health, tdvs_grant_user_permission, tdvs_list, tdvs_revoke_user_permission, tdvs_similarity_search, tdvs_update]
+    prompts: [tdvs_tools_prompt, tdvs_rag_prompt]
+    notes: tools register only when TD_BASE_URL is set and the tdvs extra is installed; the prompts are always listed
+  bar:
+    extra: bar
+    tools: [bar_manageDsaDiskFileSystem, bar_manageAWSS3Operations, bar_manageMediaServer, bar_manageTeradataSystem, bar_manageDiskFileTargetGroup, bar_manageJob]
+    prompts: []
+    notes: registers only when DSA_BASE_URL or DSA_HOST/DSA_PORT is set and the bar extra is installed
+  fs:
+    extra: fs
+    tools: []
+    prompts: []
+    notes: not installed by default (very large dependency closure; also registers ~100 dynamic tdml_* tools)
+  registry:
+    extra: null
+    tools: []
+    prompts: []
+    notes: tools are loaded from database views (mcp.mcp_list_tools); names are site-specific and not covered by this inventory
+resources_live: [graph://edge-contract]
+resources_when_glossary_defined: ["glossary://all", "glossary://definitions", "glossary://term/{term_name}"]
+progressive_disclosure_tools: [search_tool, execute_tool, base_readQuery]
+guarded_read_tools: [base_readQuery]
+# base_writeQuery and base_dynamicQuery are NOT registered by the bundled 0.2.6 wheel (their only occurrence there is the
+# eda-profile exclusion regex in teradata_mcp_server/config/profiles.yml); they stay classified here for servers that do
+# expose them, which is why validate_plugin reports inventory.destructive as a WARN. The two core tools that write are
+# sql_Execute_Full_Pipeline and rag_Execute_Workflow - both are gated by hooks/hooks.json destructive_tool_gate.
+# base_saveDDL is listed here because it WRITES a .sql file to a caller-supplied output_dir on the machine
+# running the MCP server (vendored 0.2.6, tools/base/base_tools.py:handle_base_saveDDL), even though upstream
+# annotates it read-only. It is excluded from the tv_readonly and tv_analyst profiles for the same reason.
+destructive_tools: [base_writeQuery, base_dynamicQuery, base_saveDDL, sql_Execute_Full_Pipeline, rag_Execute_Workflow, tdvs_destroy, tdvs_update, tdvs_revoke_user_permission, tdvs_grant_user_permission, bar_manageJob]
+longest_namespaced_tool_name_chars: 68
+notes: >-
+  the MCP tool names themselves stay under 64 characters; Claude Code prefixes them client-side with the plugin/server
+  scope. Seven namespaced names run 65-68 characters (bar_manageDiskFileTargetGroup, bar_manageDsaDiskFileSystem,
+  chat_aggregatedCompleteChat, qlty_rowsWithMissingValues, sql_Retrieve_Cluster_Queries, tdvs_grant_user_permission,
+  tdvs_revoke_user_permission). Measured 2026-09-05: a 67-character namespaced name loads its schema and executes
+  against the database, so name length is not a reason to leave a tool out of an agent tools: list.

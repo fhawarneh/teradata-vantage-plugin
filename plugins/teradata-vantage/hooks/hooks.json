@@ -1,0 +1,113 @@
+{
+  "description": "Teradata Vantage safety and coaching hooks (community plugin). PreToolUse: sql_read_guard denies any base_readQuery statement that is not a single SELECT/WITH/EXPLAIN/SHOW/HELP, or that invokes the WRITE_NOS table operator (SELECT-shaped, but it writes Parquet objects to your object store) (TERADATA_SQL_GUARD_MODE=enforce|audit); write_gate raises the permission prompt before destructive base_writeQuery statements (DELETE DROP TRUNCATE INSERT UPDATE MERGE ALTER MODIFY RENAME REPLACE GIVE CREATE DATABASE/USER GRANT REVOKE ABORT SESSION; DROP FOREIGN TABLE exempt; TERADATA_ALLOW_WRITES=0 denies all writes); destructive_tool_gate always prompts before the tools classified destructive by name in scripts/data/mcp_tools.yaml: tdvs_destroy/tdvs_update/tdvs_*_permission, bar_manageJob, base_saveDDL (upstream annotates it read-only but it writes a .sql file to a caller-supplied directory on the machine running the server), sql_Execute_Full_Pipeline (DROPs and re-creates seven clustering tables in the configured feature database) and rag_Execute_Workflow (creates and INSERTs into the query table, then DROPs and re-creates the query-embedding table); host_ops_gate prompts before Teradata node-admin shell commands (dbscontrol, tpareset, tpa stop/start, vprocmanager, ctl, rm PanicLoopDetected) and runs ONLY when a Teradata connection is configured for the session. PostToolUse/PostToolUseFailure: result_coach adds context when a tool result exceeds TERADATA_MAX_RESULT_CHARS or contains a Teradata error code listed in scripts/data/error_codes.yaml; it matches every tool group the bundled server registers, because an error code is worth explaining wherever it surfaces; sql_lint runs after Write and Edit and lints edited .sql/.bteq/.btq/.ddl/.dml files with sqlfluff only when sqlfluff is already installed (TERADATA_SQL_LINT=off disables). SessionStart: one status line from scripts/doctor.sh --short (names only, no secrets), re-stated on every session source — startup, resume, fork, /clear and compaction — because the line is context that /clear and compaction discard. UserPromptSubmit: prompt_secret_guard is OFF unless the plugin option enable_prompt_secret_guard is on and a Teradata connection is configured; it warns (or blocks with TERADATA_PROMPT_SECRET_GUARD=block) when a prompt contains a scheme://user:password@ URI and never echoes it. All hooks are local Python 3 / bash scripts under scripts/hooks; they read the hook JSON from stdin, send nothing anywhere, and persist nothing. Guards are mistake-prevention, not a security boundary.",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "mcp__.*__(base_readQuery|execute_tool)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/hooks/sql_read_guard.py"],
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "mcp__.*__(base_writeQuery|execute_tool)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/hooks/write_gate.py"],
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "mcp__.*__(tdvs_destroy|tdvs_update|tdvs_revoke_user_permission|tdvs_grant_user_permission|bar_manageJob|base_saveDDL|sql_Execute_Full_Pipeline|rag_Execute_Workflow)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/hooks/destructive_tool_gate.py"],
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/hooks/host_ops_gate.py"],
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "mcp__.*__((base|dba|sec|qlty|plot|rag|sql|graph|tdvs|bar|chat|fs)_.*|execute_tool|search_tool)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/hooks/result_coach.py"],
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/hooks/sql_lint.py"],
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "matcher": "mcp__.*__((base|dba|sec|qlty|plot|rag|sql|graph|tdvs|bar|chat|fs)_.*|execute_tool|search_tool)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/hooks/result_coach.py"],
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact|fork",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/hooks/session_preflight.sh"],
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/hooks/prompt_secret_guard.py"],
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

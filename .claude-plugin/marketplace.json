@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-marketplace.json",
+  "name": "teradata-plugins",
+  "description": "Community-maintained Claude Code plugins for Teradata Vantage. Not affiliated with or endorsed by Teradata Corporation.",
+  "owner": {
+    "name": "Vantage Toolkit Contributors",
+    "email": "fhawarneh@gmail.com"
+  },
+  "plugins": [
+    {
+      "name": "teradata-vantage",
+      "source": "./plugins/teradata-vantage",
+      "description": "Work with Teradata Vantage from Claude Code: bundled Teradata MCP server (read SQL, DBA, data quality, vector store, NOS/Iceberg), Teradata SQL dialect and error-code knowledge, DBA health and recovery runbooks, read-only SQL guard and destructive-write approval hooks, six agents (explorer, dba, tuner, auditor, archivist, vector) and read-only audit workflows. No telemetry; privacy statement at PRIVACY.md. Community plugin, not affiliated with or endorsed by Teradata Corporation.",
+      "homepage": "https://github.com/fhawarneh/teradata-vantage-plugin",
+      "category": "database",
+      "tags": [
+        "teradata",
+        "vantage",
+        "sql",
+        "dba",
+        "mcp",
+        "data-quality",
+        "vector-store",
+        "iceberg",
+        "nos"
+      ],
+      "relevance": {
+        "topic": "Teradata",
+        "signals": {
+          "cli": [
+            "bteq",
+            "tdload",
+            "tbuild",
+            "tpt"
+          ],
+          "filesRead": [
+            "**/*.bteq",
+            "**/*.btq"
+          ],
+          "manifestDeps": [
+            {
+              "file": "[/\\\\]requirements\\.txt$",
+              "pattern": "teradata(sql|ml)"
+            },
+            {
+              "file": "[/\\\\]pyproject\\.toml$",
+              "pattern": "teradata(sql|ml)"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

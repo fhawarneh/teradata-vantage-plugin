@@ -1,0 +1,56 @@
+# teradata-vantage plugin — forbidden-token list for scripts/check_no_leaks.py.
+#
+# One Python regular expression per line; blank lines and lines starting with "#" are ignored.
+# Matching is CASE-INSENSITIVE and each pattern is anchored with a leading word boundary (\b); a trailing
+# \b is added only when the pattern ends in a letter or digit. Optional flag prefixes, followed by ": ":
+#   raw:  use the pattern exactly as written (no word-boundary wrapping)
+#   cs:   match case-sensitively
+# Flags combine as "cs,raw: <pattern>".
+#
+# This file and scripts/data/sync_manifest.yaml are exempt from the scan (they must name what they forbid).
+# Everything else in the repository is scanned, including scripts, tests, fixtures and docs — a marketplace
+# reviewer reads the whole clone. Fixtures must be synthetic; use <db>.<table>, sales_fact, customer_dim.
+#
+# THIS FILE IS PUBLIC. It therefore lists only GENERIC, CLASS-BASED patterns. Site-specific names — the
+# databases, hosts, customers and internal projects of whoever authored a change — must NOT be added here,
+# because a published deny-list is also a published index of what it hides. Keep those in a private overlay
+# and point the scanner at it:
+#
+#   check_no_leaks.py --tokens-extra /path/to/private_tokens.txt
+#   TERADATA_PLUGIN_TOKENS_EXTRA=/path/to/private_tokens.txt python3 scripts/check_no_leaks.py
+#
+# See CONTRIBUTING.md ("Keeping site-specific content out") for the overlay format (identical to this one).
+
+# --- generic plumbing names that have no place in a portable plugin ------------------------------------
+host\.docker\.internal
+
+# --- real environments pasted into the repo ------------------------------------------------------------
+# Private-LAN literals: a documentation example uses 127.0.0.1 or a <placeholder>, never a site address.
+raw: \b192\.168\.\d{1,3}\.\d{1,3}\b
+raw: \b10\.\d{1,3}\.\d{1,3}\.\d{1,3}\b
+raw: \b172\.(?:1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}\b
+raw: \b100\.(?:6[4-9]|[7-9]\d|1[01]\d|12[0-7])\.\d{1,3}\.\d{1,3}\b
+
+# --- credentials ---------------------------------------------------------------------------------------
+# A connection URI whose HOST is a real address or FQDN — the documented examples all use <placeholders>,
+# `host`, or a reserved documentation name, so only a pasted environment matches. The RFC 2606 / 6761 /
+# 8375 reserved names (example.com|org|net, .invalid, .test, .example, .internal, .localhost, .local,
+# localhost) stay legal in docs and fixtures.
+raw: [a-zA-Z][a-zA-Z0-9+.\-]*://[^/@\s:]+:[^/@\s]+@(?!(?:localhost|host|<)\b)(?![A-Za-z0-9.\-]*(?:example\.(?:com|org|net)|\.(?:invalid|test|example|internal|localhost|local))\b)(?:\d{1,3}(?:\.\d{1,3}){3}|[A-Za-z0-9\-]+(?:\.[A-Za-z0-9\-]+)+)
+raw: \bdbc\s*/\s*dbc\b
+
+# --- environment variables that exist only in a private fork of the server, not upstream ----------------
+MCP_TD_\w*
+MCP_TOOL_EXECUTION_TIMEOUT\w*
+MCP_TOOL_CALL_TIMEOUT\w*
+
+# --- branding: never claim to be an official Teradata product (case-sensitive, same line) ---------------
+cs,raw: \bOfficial\b.{0,80}\bTeradata\b|\bTeradata\b.{0,80}\bOfficial\b
+
+# --- scripts: Arabic / RTL text and hidden Unicode (zero-width, bidi controls, BOM) ---------------------
+# Written as \uXXXX ESCAPES on purpose. A literal U+202E or U+200B in this file would make GitHub render
+# it behind a bidirectional-text warning and would put an RTL override inside a plugin that ships hooks —
+# exactly what the rule below exists to forbid. The escaped forms are behaviour-identical: verified over
+# all 1,114,112 codepoints on 2026-09-08.
+raw: [\u0600-\u06FF]
+raw: [\u200b-\u200f\u202a-\u202e\u2060-\u2064\u2066-\u2069\ufeff]

@@ -1,0 +1,27 @@
+# Synthetic sample in the list-of-maps shape of scripts/data/error_codes.yaml, used only by the
+# result_coach tests (the real catalogue is the single source; this file is NOT rendered anywhere).
+codes:
+  - code: 3541
+    area: space
+    message: "The request to assign new PERMANENT space is invalid"
+    meaning: >
+      The PARENT database has no unallocated permanent space to carve the child from;
+      the wording reads like a syntax problem but means "no room in the parent".
+    fix: |
+      Check the parent with SELECT PermSpace FROM DBC.DatabasesV WHERE DatabaseName = '<parent>';
+      then MODIFY DATABASE <parent> AS PERM = <bytes> before retrying the CREATE.
+    false_leads:
+      - "system-wide free space in DBC.DiskSpaceV (irrelevant: the parent is what matters)"
+    related: [3524, 2644]
+    skill: health
+  - code: 3706
+    area: dialect
+    message: "Syntax error"
+    meaning: "The statement is not valid Teradata SQL at the position reported."   # trailing comment
+    fix: "Check dialect: no LIMIT (use TOP), no ILIKE, quoted identifiers with double quotes."
+    skill: teradata-sql
+  - code: 5628
+    area: dialect
+    message: "Column not found"
+    meaning: 'The column does not exist in the object as spelled.'
+    fix: 'Read the DDL first with base_tableDDL, then re-issue.'

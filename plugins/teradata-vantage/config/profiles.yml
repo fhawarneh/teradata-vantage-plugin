@@ -1,0 +1,78 @@
+# teradata-vantage plugin — curated tool profiles for the bundled teradata-mcp-server.
+#
+# Loaded through CONFIG_DIR (the launcher always points CONFIG_DIR at this directory). The server merges this file
+# with its packaged profiles by TOP-LEVEL KEY: the tv_* profiles below are ADDED; the packaged profiles
+# (all, tester, dba, dataScientist, eda, bar, llmUser, graph) stay available untouched.
+#
+# HARD RULE: never add a `run:` block to any profile here. The server would push run.database_uri / transport into
+# the environment before parsing, bypassing the plugin's credential handling.
+#
+# Select with TERADATA_MCP_PROFILE (default tv_all). Patterns are regular expressions matched with re.match().
+
+tv_all:
+  tool:
+    - .*
+  prompt:
+    - ^(?!_?test).*
+  resource:
+    - .*
+
+# read-only surface: no base_writeQuery / base_dynamicQuery, no vector-store or backup writers
+tv_readonly:
+  tool:
+    - ^base_(?!(writeQuery|dynamicQuery|saveDDL)$).*
+    - ^qlty_.*
+    - ^sec_(?!(rolePermissions|userRoles)$).*   # prefix-shaped on purpose: see the note below
+    - ^graph_.*
+    - ^plot_.*
+  prompt:
+    - ^base_.*
+    - ^qlty_.*
+  resource:
+    - .*
+
+# analyst: read-only base + data quality + charts + SQL optimisation + vector-store reads
+tv_analyst:
+  tool:
+    - ^base_(?!(writeQuery|dynamicQuery|saveDDL)$).*
+    - ^qlty_.*
+    - ^plot_.*
+    - ^sql_.*
+    - ^tdvs_(?!(create|destroy|update|grant_user_permission|revoke_user_permission)$).*   # prefix-shaped: see the note below
+    - ^graph_.*
+    - ^sec_(?!(rolePermissions|userRoles)$).*   # prefix-shaped on purpose: see the note below
+  prompt:
+    - ^(?!_?test).*
+  resource:
+    - .*
+
+# dba: administration + security + all base tools (including base_writeQuery — the plugin's write gate still applies)
+tv_dba:
+  tool:
+    - ^dba_.*
+    - ^base_.*
+    - ^sec_.*
+    - ^graph_.*
+  prompt:
+    - ^dba_.*
+    - ^base_.*
+  resource:
+    - .*
+
+# WHY THE sec_ AND tdvs_ PATTERNS LOOK ODD
+# The bundled server loads a tool MODULE only when some `tool:` pattern is prefix-shaped for that module —
+# a pattern pinned to one exact name (`^sec_userDbPermissions$`) matches no module and the whole sec_ module
+# stays unloaded, so the tool it names never appears either. There are TWO such gates upstream and a pattern
+# must satisfy both: `re.match(pattern, "<prefix>_test")` in tools/module_loader.py, and for the optional
+# modules `re.match(pattern, "tdvs_*")` in app.py. Measured on the vendored 0.2.6 wheel against a live
+# system: with `^sec_userDbPermissions$` tv_readonly exposed 28 tools and NO sec_* tool at all; with the
+# negative-lookahead form above it exposes 29, the extra one being exactly sec_userDbPermissions. The
+# tv_analyst tdvs_ line had the same defect and satisfied neither gate. Keep any future single-tool
+# selection in this prefix-plus-lookahead shape; scripts/validate_plugin.py replays both predicates.
+
+# WHY base_saveDDL IS EXCLUDED FROM THE READ-ONLY PROFILES
+# It is named and annotated like a read tool, but it WRITES a .sql file to a caller-supplied
+# `output_dir` (default ./ddls_extracted) on the machine running the MCP server — verified in the
+# vendored 0.2.6 wheel, tools/base/base_tools.py:handle_base_saveDDL. A profile that calls itself
+# read-only must not carry a tool that creates files. It remains available under tv_all and tv_dba,
+# where the destructive-tool gate prompts before it runs. Use base_tableDDL to READ DDL.

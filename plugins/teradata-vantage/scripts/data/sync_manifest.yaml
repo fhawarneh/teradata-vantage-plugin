@@ -1,0 +1,194 @@
+# teradata-vantage plugin — provenance manifest for content lifted from the private source repository.
+#
+# Consumed by scripts/sync_upstream.py. Every entry records the source path (relative to --root), the
+# sha256 of the source at the time it was last imported or reviewed, the target inside the plugin, and the
+# mode:
+#   import  — the target is (re)generated from the source: copy, apply `transforms` in order (each with an
+#             exact `expected_count`; a mismatch aborts the entry), leak-scan the result with
+#             scripts/data/forbidden_tokens.txt, then write. Hand edits to the target are overwritten.
+#   track   — the target was PORTED by hand (rewritten, merged with other material, or turned into hook/CLI
+#             code). The tool only reports source drift; re-porting is a manual, reviewed task. `notes` says
+#             what the port changed so a reviewer can repeat it.
+# `--check` compares source sha256 values only and exits 1 on drift. This file is exempt from the leak scan
+# because it must name the tokens it removes.
+#
+# Transform types
+#   frontmatter_rewrite: {set: {...}, drop_keys: [...]} | {strip: true}
+#   delete_section:      {heading: <regex on heading text>, expected_count: N}   (deletes to the next heading of
+#                        the same or higher level)
+#   replace:             {pattern: <regex>, replacement: <text>, flags: "im", expected_count: N}
+
+version: 1
+tokens_file: scripts/data/forbidden_tokens.txt
+entries:
+
+  # ---------------------------------------------------------------- imported skills (MIT, generic Teradata content)
+  - id: vector-store-skill
+    mode: import
+    license: MIT
+    source: config/skills/documentation/teradata/teradata-vector-store/SKILL.md
+    sha256: c4629a0d51ae9bd92251b8a8aa37ae606af9aa67a305d44bb5e1773cd0e96d50
+    target: skills/vector-store/SKILL.md
+    notes: >
+      Lifted as the body of the vector-store skill. Frontmatter rewritten to the plugin contract; the
+      search_algorithm value list corrected. The skill author may extend the target with references/ and
+      allowed-tools; keep those edits in the transforms below (or move the entry to mode: track) before
+      re-running a real import, because a real import overwrites the target.
+    transforms:
+      - type: frontmatter_rewrite
+        set:
+          name: vector-store
+          description: >-
+            Use when creating, inspecting, querying, updating or repairing a Teradata Enterprise Vector Store
+            (TDVS) with the tdvs_* tools — the mandatory target_database rule, the embeddings model / base-URL
+            pairing, embedding dimensions, the physical vectorstore_* object layout, the V1/V2 API boundary and
+            how to recover a CREATE FAILED store.
+          when_to_use: >-
+            "create a vector store", "similarity search over <db>.<table>", "why is my vector store CREATE
+            FAILED", "which tables did TDVS create", "RAG over Teradata", tdvs_create / tdvs_similarity_search /
+            tdvs_ask questions.
+          license: MIT
+          metadata:
+            skill_type: documentation
+            category: teradata
+            version: "1.0.0"
+        drop_keys: []
+      - type: replace
+        pattern: '`HNSW` / `FLAT` / `IVF_FLAT`'
+        replacement: '`HNSW` / `KMEANS` / `VECTORDISTANCE`'
+        expected_count: 1
+      - type: replace
+        pattern: 'The `tdvs_\*` MCP tools talk to the'
+        replacement: 'The `tdvs_*` MCP tools (available when the server is installed with the `tdvs` extra and `TD_BASE_URL` is set) talk to the'
+        expected_count: 1
+
+  - id: ai-native-data-products
+    mode: import
+    license: MIT
+    source: config/skills/documentation/teradata/ai-native-data-product/SKILL.md
+    sha256: a8750dd89880364863bd8a8689991cda059e046fb08136d55992ea2bc1d31623
+    target: skills/explore/references/ai-native-data-products.md
+    notes: >
+      Six-module standard + discovery flow, as a reference under the explore skill. Frontmatter stripped
+      (references carry a one-line purpose header, not frontmatter); the pilot-deployment section and every
+      pilot-specific aside removed; the memory-file bullet removed.
+    transforms:
+      - type: frontmatter_rewrite
+        strip: true
+      - type: replace
+        pattern: '^# AI-Native Data Products — Architecture Skill$'
+        replacement: '# AI-Native Data Products — the six-module standard and its discovery flow (from github.com/Teradata/ai-native-data-products, MIT)'
+        flags: m
+        expected_count: 1
+      - type: replace
+        pattern: '^This skill teaches the'
+        replacement: 'This reference describes the'
+        flags: m
+        expected_count: 1
+      - type: delete_section
+        heading: '^Pilot deployment'
+        expected_count: 1
+      - type: replace
+        pattern: '^e\.g\., .*$'
+        replacement: 'for example one deployed as `<Name>_Domain` plus `<Name>_Semantic`.'
+        flags: m
+        expected_count: 1
+      - type: replace
+        pattern: ' \(or `\{Name\}` for pilot clones\)'
+        replacement: ''
+        expected_count: 1
+      - type: replace
+        pattern: ' \(consolidated into `_Semantic` in the [A-Za-z]+ pilot\)'
+        replacement: ' (smaller deployments may co-locate these tables in `_Semantic`)'
+        expected_count: 1
+      - type: replace
+        pattern: ' \(consolidated into `_Semantic` in the pilot\)'
+        replacement: ' (smaller deployments may co-locate these tables in `_Semantic`)'
+        expected_count: 1
+      - type: replace
+        pattern: ' — not used in this pilot'
+        replacement: ' (optional)'
+        expected_count: 2
+      - type: replace
+        pattern: '^- Memory entries this skill supersedes:.*\n'
+        replacement: ''
+        flags: m
+        expected_count: 1
+      - type: replace
+        pattern: '^- Module docs in this bundle: .*$'
+        replacement: '- Module documentation: `modules/semantic.md`, `modules/memory.md`, `modules/observability.md` in the upstream repository.'
+        flags: m
+        expected_count: 1
+
+  # ---------------------------------------------------------------- tracked sources (ported by hand; drift-check only)
+  - id: nos-archiving-skill
+    mode: track
+    license: MIT
+    source: config/skills/documentation/teradata/teradata-data-tiering/SKILL.md
+    sha256: 2173c3902c94e5f13c9741f2290f82edf82eab8d68de0e4196266c8aa3754818
+    target: skills/archive/SKILL.md
+    notes: >
+      Merged with the Iceberg source into the archive skill. Port rules: every step that called an internal
+      tool was rewritten as the SQL it executed (CREATE AUTHORIZATION x2, WRITE_NOS, CREATE FOREIGN TABLE,
+      READ_NOS, federated view, restore); site object-storage names, authorization object names and the
+      demo table were replaced by <db>.<table> placeholders; the "operating rules for the agent" section was
+      folded into the skill's hard rules.
+
+  - id: iceberg-archiving-skill
+    mode: track
+    license: MIT
+    source: config/skills/documentation/teradata/teradata-iceberg-archive/SKILL.md
+    sha256: 9bdd39097acaa0a3cb18bdff242381c0ea6c38254ca3f987ae1137c974c37876
+    target: skills/archive/SKILL.md
+    notes: >
+      Merged into the archive skill. Port rules: the "ONE atomic tool call" offload step became the CTAS +
+      verify + DELETE sequence; the preconditions section that pointed at an internal setup script became
+      references/otf-enablement.md (dbscontrol JavaOTFFlags, TD_OTFDB, GRANT CREATE SERVER); the classifier
+      became scripts/td_temperature.py.
+
+  - id: logical-backup-script
+    mode: track
+    license: MIT
+    source: scripts/td_logical_backup.py
+    sha256: eb843b759676c8b2ed9f0a8e176645ef5bd2b910dae87ca23253a6f514f14782
+    target: scripts/ops/td_logical_backup.py
+    notes: >
+      Port rules: the hard-coded target list, host, port, credentials and output directory were replaced by
+      command-line arguments and environment variables (TD_BACKUP_HOST/USER/PW or DATABASE_URI) with no
+      defaults that name a site; the system-database exclusion list is read from scripts/data/
+      system_databases.yaml; the module docstring was rewritten (no incident history).
+
+  - id: hardstop-watchdog
+    mode: track
+    license: MIT
+    source: scripts/td_hardstop_watchdog.sh
+    sha256: 9b765a8c619596d862203b451710ae68e2737f0df910449e6500baa603306abb
+    target: scripts/ops/td_hardstop_watchdog.sh
+    notes: >
+      Port rules: header rewritten as a generic "runs on the Teradata node as root" runbook (no VM product
+      names, dates or incident references); the tpa stop/start cycle, the transitional-state guard, the
+      flock single-instance lock and the 5-minute rate limit kept verbatim.
+
+  - id: sql-read-guard
+    mode: track
+    license: MIT
+    source: services/mcp_sql_guard.py
+    sha256: abe4d3b3383ec33c7ebcca9c1261385375894d1016df0cfb2a4c61cdf0f61381
+    target: scripts/hooks/sql_read_guard.py
+    notes: >
+      Ported to a Claude Code PreToolUse hook: the offset-preserving mask (quotes, "--" to every line
+      terminator, block comments), single-statement rule and the 14 blocked verbs kept verbatim; "truncate"
+      added; the statement-start rule widened to SELECT|WITH|EXPLAIN|SHOW|HELP; TERADATA_SQL_GUARD_MODE
+      enforce|audit added; deny/ask JSON output added; module docstring rewritten (no internal service
+      names). NEVER add end/begin/comment/collect/lock to the verb list (CASE … END regression).
+
+  - id: sql-read-guard-tests
+    mode: track
+    license: MIT
+    source: tests/test_mcp_sql_guard.py
+    sha256: 018d551432260be637bbcd21109dd3223f187be397cb6a563941d317828bf69f
+    target: scripts/tests/test_sql_read_guard.py
+    notes: >
+      Port rules: table names in the vectors replaced by sales_fact / customer_dim placeholders; the
+      comment-terminator bypass vectors and the CASE … END regression kept; EXPLAIN/SHOW/HELP widening and
+      the TRUNCATE block added as new vectors.

@@ -1,0 +1,88 @@
+#!/usr/bin/env bash
+# teradata-vantage plugin — interactive connection helper. RUN THIS IN YOUR OWN TERMINAL, not through Claude:
+# it prompts for the password with echo off and writes ${CLAUDE_PLUGIN_DATA}/teradata.env with mode 0600.
+#
+#   bash <plugin-root>/scripts/teradata-vantage-connect            # interactive: host, port, user, password, database
+#   bash <plugin-root>/scripts/teradata-vantage-connect --url URL  # bridge to an existing MCP server instead
+#   bash <plugin-root>/scripts/teradata-vantage-connect --show     # print the file with the password redacted
+#   bash <plugin-root>/scripts/teradata-vantage-connect --test     # try a logon with the locally installed server's driver
+#   bash <plugin-root>/scripts/teradata-vantage-connect --remove   # delete the file
+set -u
+# shellcheck source=_plugin_env.sh
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/_plugin_env.sh"
+tv_resolve_paths "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+FILE="${DATA}/teradata.env"
+die() { echo "error: $*" >&2; exit 1; }
+
+redact() { sed -E 's#(://[^:/@]+):[^@]*@#\1:***@#; s#^(TD_PAT=).+#\1***#' "$1"; }
+
+case "${1:-}" in
+  --show)   [ -r "$FILE" ] && redact "$FILE" || echo "no credential file at $FILE"; exit 0 ;;
+  --remove) rm -f "$FILE" && echo "removed $FILE"; exit 0 ;;
+  --test)
+    [ -r "$FILE" ] || die "no credential file at $FILE"
+    PYV="${DATA}/venv/bin/python"; [ -x "$PYV" ] || die "the local server is not installed (bash scripts/install-server.sh) — --test needs its teradatasql driver"
+    URI="$(grep -E '^DATABASE_URI=' "$FILE" | head -1 | cut -d= -f2-)"
+    LM="$(grep -E '^LOGMECH=' "$FILE" | head -1 | cut -d= -f2-)"
+    [ -n "$URI" ] || die "DATABASE_URI missing in $FILE"
+    DATABASE_URI="$URI" LOGMECH="${LM:-TD2}" "$PYV" - <<'PY'
+import os, sys, urllib.parse
+import teradatasql
+u = urllib.parse.urlsplit(os.environ["DATABASE_URI"])
+host = u.hostname; port = u.port or 1025
+user = urllib.parse.unquote(u.username or ""); pw = urllib.parse.unquote(u.password or "")
+db = (u.path or "/").lstrip("/")
+try:
+    with teradatasql.connect(host=host, dbs_port=port, user=user, password=pw, logmech=os.environ.get("LOGMECH", "TD2"), database=db or None, connect_timeout=10000) as con:
+        cur = con.cursor(); cur.execute("SELECT InfoKey, InfoData FROM DBC.DBCInfoV WHERE InfoKey='VERSION'")
+        print("logon OK:", host, port, "user", user, "database", db or "(default)", "| Teradata", cur.fetchone()[1])
+except Exception as e:
+    msg = str(e).splitlines()[0]
+    print("logon FAILED:", msg[:300]); sys.exit(1)
+PY
+    exit $? ;;
+  --url)
+    URL="${2:-}"; [ -n "$URL" ] || die "--url needs a streamable-http URL, e.g. http://127.0.0.1:8001/mcp/"
+    mkdir -p "$DATA"; umask 077
+    { [ -r "$FILE" ] && grep -vE '^TERADATA_MCP_URL=' "$FILE"; echo "TERADATA_MCP_URL=$URL"; } > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
+    echo "saved bridge URL to $FILE (mode 0600). Start a new Claude Code session; the plugin will bridge to it."; exit 0 ;;
+  -h|--help) sed -n '2,10p' "$0"; exit 0 ;;
+esac
+
+[ -t 0 ] || die "this helper is interactive — run it in your own terminal (not through a tool call)"
+command -v python3 >/dev/null 2>&1 || die "python3 is required for URL-encoding the credentials"
+
+echo "Teradata Vantage connection for the teradata-vantage plugin"
+echo "(nothing is sent anywhere; the values are written to $FILE with mode 0600)"
+read -r -p "host                 : " HOST;      [ -n "$HOST" ] || die "host is required"
+read -r -p "port [1025]          : " PORT;      PORT="${PORT:-1025}"
+read -r -p "user                 : " USER_;     [ -n "$USER_" ] || die "user is required"
+read -r -s -p "password             : " PASS; echo; [ -n "$PASS" ] || die "password is required"
+read -r -p "default database [${USER_}]: " DB;  DB="${DB:-$USER_}"
+read -r -p "LOGMECH [TD2] (TD2|LDAP|KRB5|JWT): " LM; LM="${LM:-TD2}"
+read -r -p "Vector Store base URL (optional, TD_BASE_URL): " TDVS
+case "$DB" in [Dd][Bb][Cc]) echo "note: DBC as the default database means CREATE TABLE will fail with error 3524 — pick a working database for anything that writes." ;; esac
+
+# NEVER pass the password as a command-line argument: /proc/<pid>/cmdline and `ps` are world-readable.
+# The values reach python3 through its environment (owner-readable only) and come back one per line.
+ENC="$(TV_U="$USER_" TV_P="$PASS" python3 -c 'import os, urllib.parse as u
+print(u.quote(os.environ["TV_U"], safe="")); print(u.quote(os.environ["TV_P"], safe=""))')"
+ENC_USER="$(printf '%s\n' "$ENC" | sed -n 1p)"
+ENC_PASS="$(printf '%s\n' "$ENC" | sed -n 2p)"
+[ -n "$ENC_USER" ] && [ -n "$ENC_PASS" ] || die "could not URL-encode the credentials with python3"
+URI="teradata://${ENC_USER}:${ENC_PASS}@${HOST}:${PORT}/${DB}"
+
+mkdir -p "$DATA"; umask 077
+{
+  echo "# written by teradata-vantage-connect on $(date -u +%Y-%m-%dT%H:%M:%SZ); read by scripts/launch-mcp.sh"
+  echo "DATABASE_URI=$URI"
+  echo "LOGMECH=$LM"
+  [ -n "$TDVS" ] && echo "TD_BASE_URL=$TDVS"
+  [ -r "$FILE" ] && grep -E '^TERADATA_MCP_URL=' "$FILE"
+  : # ALWAYS end the group with a true command: a group's status is its last command's, and a
+    # skipped optional line (no TD_BASE_URL, no existing file) would otherwise cancel the mv below.
+} > "$FILE.tmp" && mv "$FILE.tmp" "$FILE" && chmod 600 "$FILE"
+unset PASS ENC ENC_USER ENC_PASS URI
+echo "saved to $FILE (mode 0600):"; redact "$FILE"
+echo "next: start a new Claude Code session, then /mcp should show plugin:teradata-vantage:teradata connected."
+echo "      (if the local server is not installed yet: bash $(cd "$(dirname "$0")" && pwd)/install-server.sh)"

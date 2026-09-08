@@ -1,0 +1,62 @@
+# teradata-vantage plugin — TEMPLATE for a semantic layer (custom tools / cubes / prompts / glossary) served by the
+# bundled Teradata MCP server. Copy this file to a directory of your own, rename it <domain>_objects.yml, set
+# TERADATA_MCP_CONFIG_DIR to that directory (it must also contain a profiles.yml exposing your objects), and restart.
+# It is NOT loaded from here (the .example suffix keeps it out of the server's *_objects.yml scan).
+#
+# Teradata dialect reminders: row limits use `SELECT TOP n` (never LIMIT); parameters bind as %(name)s.
+# Authoring help: the upstream "teradata-mcp-customisation" agent skill in the Teradata MCP server repository
+# (agentic/skills/teradata-mcp-customisation) builds these files from your documentation.
+
+sales_top_customers:
+  type: tool
+  description: Top N customers by total sales amount
+  sql: |
+    SELECT TOP %(limit)s customer_id, SUM(amount) AS total_sales
+    FROM <db>.sales_fact
+    GROUP BY customer_id
+    ORDER BY total_sales DESC
+  parameters:
+    limit:
+      description: Number of customers to return
+      type_hint: int
+      default: 10
+
+sales_by_region:
+  type: cube
+  description: Sales measures by region, product and month
+  sql: |
+    SELECT region, product, EXTRACT(YEAR FROM sale_date) AS sale_year, EXTRACT(MONTH FROM sale_date) AS sale_month,
+           amount, quantity
+    FROM <db>.sales_fact
+  dimensions:
+    region:
+      description: Sales region
+      expression: region
+    product:
+      description: Product name
+      expression: product
+    sale_month:
+      description: Calendar month (1-12)
+      expression: sale_month
+  measures:
+    total_sales:
+      description: Sum of sale amounts
+      expression: SUM(amount)
+    units:
+      description: Units sold
+      expression: SUM(quantity)
+
+sales_analyst:
+  type: prompt
+  description: Sales analysis assistant
+  prompt: >
+    You are a sales data analyst working on Teradata Vantage. Answer only from query results, cite the SQL you ran,
+    and use SELECT TOP n for row limits.
+
+glossary:
+  type: glossary
+  customer:
+    definition: A person or organisation that purchased goods or services.
+    synonyms: [client, buyer]
+  region:
+    definition: The sales territory a transaction is attributed to.

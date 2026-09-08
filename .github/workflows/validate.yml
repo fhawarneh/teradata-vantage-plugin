@@ -1,0 +1,84 @@
+name: validate
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Read-only by default; no job here writes to the repository.
+permissions:
+  contents: read
+
+concurrency:
+  group: validate-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Pinned so a new CLI release cannot turn `main` red on its own: `claude plugin validate --strict`
+  # treats warnings as errors and the validator gains warnings over time. Bump this deliberately, after
+  # re-running the gates in CONTRIBUTING.md against the new version. The advisory `validate-latest` job
+  # below tracks the current release without being able to fail the build.
+  CLAUDE_CODE_VERSION: "2.1.263"
+  DISABLE_AUTOUPDATER: "1"
+  CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: "1"
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+
+      - name: Install Claude Code CLI (pinned)
+        run: |
+          npm install -g "@anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}"
+          claude --version
+
+      - name: Unit tests
+        run: |
+          python -m pip install --quiet pytest pyyaml
+          python -m pytest plugins/teradata-vantage/scripts/tests -q -p no:cacheprovider
+
+      # --no-cli because the two `claude plugin validate --strict` runs are separate steps below;
+      # without it validate_plugin.py runs them a second time.
+      - name: Plugin self-validation (manifests, tool names, grants, leak scan)
+        run: python plugins/teradata-vantage/scripts/validate_plugin.py --repo . --no-cli
+
+      - name: Vendored server drift check
+        run: bash plugins/teradata-vantage/scripts/vendor_server.sh --check
+
+      - name: claude plugin validate --strict (plugin)
+        run: claude plugin validate plugins/teradata-vantage --strict
+
+      - name: claude plugin validate --strict (marketplace)
+        run: claude plugin validate . --strict
+
+      # `--force` skips the tag-already-exists and dirty-tree checks; the version agreement between
+      # plugin.json and the marketplace entry is still validated, and --dry-run creates nothing.
+      - name: Release-tag consistency (plugin.json vs marketplace entry)
+        run: claude plugin tag plugins/teradata-vantage --dry-run --force
+
+  # Advisory: runs the same strict validation against the current CLI release so a new validator
+  # warning shows up here first. It cannot fail the build.
+  validate-latest:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+      - name: Install Claude Code CLI (current release)
+        run: |
+          npm install -g "@anthropic-ai/claude-code@latest"
+          claude --version
+      - name: claude plugin validate --strict (plugin)
+        run: claude plugin validate plugins/teradata-vantage --strict
+      - name: claude plugin validate --strict (marketplace)
+        run: claude plugin validate . --strict

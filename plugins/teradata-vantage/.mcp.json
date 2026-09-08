@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "teradata": {
+      "command": "bash",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/launch-mcp.sh"],
+      "env": {
+        "TERADATA_MCP_OPTION_DATABASE_URI": "${user_config.database_uri}",
+        "TERADATA_MCP_OPTION_URL": "${user_config.mcp_url}",
+        "TERADATA_MCP_OPTION_EXTRAS": "${user_config.server_extras}"
+      },
+      "timeout": 180000
+    }
+  }
+}

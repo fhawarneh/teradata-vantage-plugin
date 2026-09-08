@@ -1,0 +1,51 @@
+name: Correction to Teradata behaviour
+description: A skill states something about Teradata that is wrong, out of date, or release-dependent.
+labels: ["correction"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A wrong fact is worse than a missing one: everything in `skills/` is loaded into a model's context and
+        acted on, so a subtly false dialect rule makes Claude write broken SQL confidently. Corrections are the
+        most valuable contribution to this plugin.
+
+        Use `<db>.<table>` and generic names such as `sales_fact` and `customer_dim` — no production object
+        names, no credentials.
+  - type: input
+    id: location
+    attributes:
+      label: Where it is written
+      description: "File and line, for example `plugins/teradata-vantage/skills/teradata-sql/SKILL.md:120`, or the error code in `scripts/data/error_codes.yaml`."
+    validations:
+      required: true
+  - type: textarea
+    id: claim
+    attributes:
+      label: What it currently says
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: correction
+    attributes:
+      label: What is actually true
+      description: State it as precisely as you can, with the SQL that shows it.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: support
+    attributes:
+      label: How you know
+      description: |
+        Either what you observed (and on which release), or the Teradata documentation it comes from. If it is
+        from documentation rather than observed, say so — the repo marks those claims explicitly.
+    validations:
+      required: true
+  - type: input
+    id: vantage-version
+    attributes:
+      label: Teradata Vantage release you observed it on
+      description: "The `VERSION` row from `SELECT InfoKey, InfoData FROM DBC.DBCInfoV;`, if you observed it."
+    validations:
+      required: false

@@ -1,0 +1,77 @@
+name: Bug report
+description: Something in the plugin behaves differently from what it documents.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not open a public issue for a suspected vulnerability — follow `SECURITY.md` instead.
+
+        Nothing you paste here should contain a real `DATABASE_URI`, password, PAT, or production table or
+        column names. Redact them, or replace them with `<db>.<table>` and generic names such as
+        `sales_fact` and `customer_dim`.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you asked for, what the plugin did, and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Smallest reproduction
+      description: The skill, agent, workflow or tool call involved, and the SQL if any — redacted.
+      render: text
+    validations:
+      required: true
+  - type: input
+    id: plugin-version
+    attributes:
+      label: Plugin version
+      description: "`version` in `plugins/teradata-vantage/.claude-plugin/plugin.json`, or the version shown by `claude plugin list`."
+    validations:
+      required: true
+  - type: input
+    id: claude-version
+    attributes:
+      label: Claude Code version
+      description: Output of `claude --version`.
+    validations:
+      required: true
+  - type: dropdown
+    id: transport
+    attributes:
+      label: Transport mode
+      options:
+        - local server (bundled wheel installed by /teradata-vantage:setup install)
+        - bridge (mcp_url pointing at a server I already run)
+        - not sure / no Teradata tools appear at all
+    validations:
+      required: true
+  - type: textarea
+    id: doctor
+    attributes:
+      label: Doctor report
+      description: |
+        Output of `/teradata-vantage:setup doctor`. It prints names, versions and yes/no facts — it names the
+        credential source it found, never the value. Read it before pasting and redact anything site-specific,
+        such as a host name.
+      render: text
+    validations:
+      required: false
+  - type: input
+    id: vantage-version
+    attributes:
+      label: Teradata Vantage release
+      description: "The `VERSION` row from `SELECT InfoKey, InfoData FROM DBC.DBCInfoV;` — leave blank if the issue is not database-side."
+    validations:
+      required: false
+  - type: textarea
+    id: error
+    attributes:
+      label: Error text
+      description: The Teradata `Error NNNN` message or the hook/tool output, verbatim but redacted.
+      render: text
+    validations:
+      required: false

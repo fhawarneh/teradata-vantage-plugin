@@ -1,0 +1,65 @@
+{
+  "tools": [
+    {
+      "name": "base_readQuery",
+      "description": "Execute a user-provided SQL query against Teradata and return the results. Use this tool ONLY when the user supplies an explicit SQL statement or a request that includes filter conditions (WHERE clause, aggregations, JOINs, etc.). Do NOT use for simply browsing or sampling rows from a table \u2014 use base_tablePreview for that. The sql parameter is required and must contain the full SQL text.\n\n    Arguments:\n      sql       - SQL text, with optional bind-parameter placeholders\n      persist   - Set to True to persist the results as a table and reuse it later. Recommended for large result sets.\n      row_limit - Maximum rows to return (default 1000, ceiling 50000). Pass a higher value when you need more rows.\n\n    When the response metadata contains 'truncated: true', more rows exist beyond the limit. To get more data:\n      - Pass a higher row_limit (up to 50000) to retrieve more rows in the response.\n      - Use persist=true to write all rows to a volatile table and query it directly \u2014 this bypasses\n        the row limit entirely and is the recommended approach for large result sets.\n\n    Returns:\n      ResponseType: formatted response with query results + metadata\n                   (includes 'volatile_table' field in metadata if persist=True)\n                   (includes 'truncated' and 'row_limit' in metadata when results are capped)",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "sql": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "persist": {
+            "default": false,
+            "type": "boolean"
+          },
+          "row_limit": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "type": "object"
+      }
+    },
+    {
+      "name": "base_columnDescription",
+      "description": "List the column names, data types, and basic attributes for a single Teradata table or view. Use for straightforward questions like 'what columns does this table have?' or 'what are the fields and their types?'. For precise Teradata-specific type codes, character sets, decimal precision, index details, or bulk metadata across many objects, use base_columnMetadata instead.\n\nArguments:\n  database_name - Database name. Defaults to '%' (all databases).\n  table_name - Table or view name. Defaults to '%' (all tables).\n  persist - If True, materializes result as a volatile table and returns table name",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "persist": {
+            "default": false,
+            "description": "If True, materializes result as a volatile table and returns table name",
+            "type": "boolean"
+          },
+          "database_name": {
+            "default": "%",
+            "description": "Database name. Defaults to '%' (all databases).",
+            "type": "string"
+          },
+          "table_name": {
+            "default": "%",
+            "description": "Table or view name. Defaults to '%' (all tables).",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    }
+  ]
+}

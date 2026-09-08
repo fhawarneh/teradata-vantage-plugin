@@ -1,0 +1,8 @@
+# Blank issues stay enabled so a question that fits none of the templates still has a home.
+# There is no security contact link here on purpose: a vulnerability must not be reported through a public
+# issue at all — SECURITY.md carries the private route.
+blank_issues_enabled: true
+contact_links:
+  - name: Bug in the bundled MCP server itself
+    url: https://github.com/Teradata/teradata-mcp-server
+    about: The plugin vendors teradata-mcp-server (MIT). Issues in the server itself belong upstream.

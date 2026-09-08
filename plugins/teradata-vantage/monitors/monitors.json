@@ -1,0 +1,8 @@
+[
+  {
+    "name": "td-health-watch",
+    "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/monitor_health.sh\"",
+    "description": "Teradata DBC space headroom and active session count (state changes only)",
+    "when": "on-skill-invoke:health"
+  }
+]

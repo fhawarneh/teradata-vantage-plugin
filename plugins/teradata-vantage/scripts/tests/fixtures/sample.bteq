@@ -1,0 +1,25 @@
+.LOGON ${TDHOST}/${TDUSER},${TDPASS_FROM_ENV}
+.SET WIDTH 200
+.SET ERROROUT STDOUT
+
+DATABASE sales_db;
+
+SELECT COUNT(*) AS row_count
+FROM sales_fact
+WHERE order_date >= DATE '2026-01-01';
+
+.IF ERRORCODE <> 0 THEN .GOTO FAILED
+
+.EXPORT REPORT FILE = sales_summary.txt
+SELECT region_name, SUM(sales_amount) AS total_sales
+FROM sales_fact f
+JOIN customer_dim c ON c.customer_id = f.customer_id
+GROUP BY region_name;
+.EXPORT RESET
+
+.LOGOFF
+.QUIT 0
+
+.LABEL FAILED
+.LOGOFF
+.QUIT 8
