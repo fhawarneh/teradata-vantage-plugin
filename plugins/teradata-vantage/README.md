@@ -171,6 +171,10 @@ Four prompts that each put a different part of the plugin to work. Run them afte
 | `vector-store` | Teradata Enterprise Vector Store, and in-database vectors (`VECTOR32`, `TD_VECTORDISTANCE`) |
 | `pipelines` | dbt models through the dbt-teradata adapter and Airflow DAGs through the Teradata provider: the profile, incremental strategies, primary-index config, and which operator to use |
 | `client-development` | Application code that talks to Vantage: `teradatasql`, `teradataml`, SQLAlchemy, JDBC; the qmark parameter style, session mode, pooling |
+| `workload` | Why a query is queued rather than slow: TASM/TDWM rules, which workload it landed in, service-level goals, and query banding |
+| `loading` | Getting data in: choosing between BTEQ, FastLoad, MultiLoad, TPump, TPT and NOS; load slots; verifying what landed |
+| `migration` | Moving a workload onto or off Teradata: inventory, sizing, dependency order, the four validation checks, cutover |
+| `docs` | Where to look things up: release identity, whether a feature is installed, and `COMMENT` — the catalogue that `SHOW TABLE` hides |
 | `lineage` | What depends on an object, what feeds it, what breaks if it changes; cycles, root objects and migration waves, over an edge repository |
 | `analytics` | Running analytics in the database instead of extracting to a notebook: the ClearScape `TD_*` fit/transform functions, and BYOM scoring of ONNX, PMML, H2O, Dataiku and DataRobot models |
 | `teradata-sql` | *(background)* The dialect rules and error-code repair, applied whenever SQL is written |

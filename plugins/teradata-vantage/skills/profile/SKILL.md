@@ -1,7 +1,7 @@
 ---
 name: profile
 description: Use when assessing the data quality or statistical shape of a Teradata table or database — null/blank/zero/negative counts, distinct categories, univariate statistics, rows with missing values, completeness scores — via the seven qlty_* tools or their in-database TD_ClearScape SQL equivalents. Read-only; never writes.
-when_to_use: profile <db>.<table>; data quality of <db>; which columns have nulls, blanks or negatives; distribution of <column>; distinct values of <column>; mean and standard deviation; completeness score; find rows with missing <column>; is this table fit for analytics; run a data-quality assessment on the whole database.
+when_to_use: profile <db>.<table>; data quality of <db>; which columns have nulls, blanks or negatives; distribution of <column>; distinct values of <column>; mean and standard deviation; completeness score; find rows with missing <column>; is this table fit for analytics; run a data-quality assessment on the whole database; generate test data; synthetic data; make me a test table.
 license: MIT
 metadata:
   skill_type: workflow
@@ -145,3 +145,6 @@ anomalies → completeness score with its formula → three concrete recommendat
 NOT NULL", "normalise `status` casing", "investigate 412 negative `amount` rows"). Show the SQL or tool call
 behind every number. Do not present a sample-based figure as a population figure — say "on a 100k-row
 sample". Never soften a finding: a 100%-NULL column is a broken column, say so.
+
+## References
+- `references/test-data.md` — generating realistic test volume in-database with `Sys_Calendar` and `RANDOM`.

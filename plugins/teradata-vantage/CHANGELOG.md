@@ -1,5 +1,71 @@
 # Changelog
 
+## 0.4.0 (2026-09-08)
+
+Closes the skill-breadth gap found by auditing this plugin against every database plugin in Anthropic's
+marketplaces, and the last four MCP tools it shipped but taught nowhere. **19 skills, 7 agents.**
+
+Context for the audit: 291 plugins in the official directory and 2,282 in the community one, with no
+Teradata/Vantage plugin in either, while Oracle, Databricks, Snowflake, MongoDB, CockroachDB, BigQuery
+and DuckDB are all listed. Against those, this plugin led on agents and was the only one with multi-agent
+workflows, but trailed on skills — 15 against CockroachDB's 34 and Databricks' 31. Most of that surplus
+is product surface Teradata does not have; five of their skills were genuinely portable and this release
+builds the Teradata equivalent of each.
+
+Everything below was executed against a live Vantage 20.00 before being written.
+
+### Added
+
+- **`workload` skill** + `references/tdwm.md`. Why a query is queued rather than slow — TASM/TDWM rules,
+  which workload it landed in, service-level goals, delay and rejection counters, and query banding.
+  Bound to the `dba` agent. Four traps, each hit while writing it:
+  - `DBC.WorkloadInfoV` does not exist; the view is `TDWM.WorkloadInfoV`, and joining to it is mandatory
+    because `TDWMSummaryLog` records only a `WDID`.
+  - `GROUP BY 1,2,3` over that join's `TRIM()` columns fails with `3504`.
+  - `TDWMActiveWDs` / `TDWMListWDs` are table **functions**, not views — and `TDWMActiveWDs()` carries
+    the SLG, which is what makes `MetSLGCount` interpretable.
+  - `GETQUERYBANDVALUE(0,'key')` returns the value; `(1,'key')` returns an empty string, not an error.
+- **In-database AI** — `analytics/references/in-database-ai.md` plus a section in the skill. Closes the
+  `databricks-ai-functions` gap and two untaught tools.
+- **`loading` skill.** Choosing between BTEQ, FastLoad, MultiLoad, TPump, TPT and NOS; checking the
+  target will accept the utility; verifying what landed. Answers a question the existing `tpt.md` left
+  open — the load-slot limits are TDWM Utility Session rules, readable per system.
+- **`migration` skill.** The project around the dialect: inventory, sizing, dependency order via the
+  `lineage` waves, the four validation checks, cutover.
+- **`docs` skill.** Release identity, whether a feature is installed, and `COMMENT` — 16,410 column and
+  866 table comments existed on the measured system, and **`SHOW TABLE` does not include them**, so
+  `base_tableDDL` can never show them either.
+- **`profile/references/test-data.md`.** Generating realistic volume in-database with
+  `Sys_Calendar.CALENDAR` (73,414 rows, 1900–2100) and `RANDOM`.
+- **Two eval cases** — an empty DBQL-backed view is not proof nothing was throttled, and 80 million
+  governed records should not be shipped to an external API.
+
+### Fixed
+
+- **All four untaught MCP tools are now taught.** `plot_polar_chart` and `plot_radar_chart` were missing
+  from the `query` skill (the rule that matters was there; the tools were not named, so the coverage
+  check could not see them), and `chat_completeChat` / `chat_aggregatedCompleteChat` had no home at all.
+  Coverage re-run: every tool the plugin ships is taught by a non-generated skill.
+
+### Measured, and deliberately not written
+
+- **`AI_AskLLM` is present** and takes exactly two input tables, but its input aliases are not
+  discoverable from the database — `DBC.FunctionParametersV` does not exist and `HELP FUNCTION` returns
+  zero rows for a table operator. Rather than guess, the reference states what it requires and points at
+  the release documentation. A wrong alias produces the same error as a wrong table count, so guessing
+  looks like progress without being progress.
+- **CompleteChat is not installed** on the measured system, so the `chat_*` tools register only where it
+  is *and* `CHAT_API_KEY` is set. Taught as an availability check, not as a given.
+- **No time-series and no nPath/attribution families exist** on this release. Writing skills for them
+  would have been inventing coverage.
+- **`TD_API_VertexAI` requires an `AccessToken` as a `USING` argument**, which puts the credential in the
+  statement text and therefore in DBQL. Worth knowing before recommending it.
+
+### Context cost
+
+19 skills and 7 agents. Measure with `claude plugin details` against a clean-HOME install from GitHub;
+the local-directory install reads roughly 1.46x higher, a discrepancy documented at 0.2.0.
+
 ## 0.3.0 (2026-09-08)
 
 The remaining backlog from the 0.2.0 plan, implemented rather than deferred. Released as 0.3.0
