@@ -2,7 +2,7 @@
 
 Behaviour tests for the `teradata-vantage` plugin, in the shape `claude plugin eval` reads: each
 case is a directory holding `prompt.md` — YAML frontmatter plus the literal user turn — and one
-file per grader under `graders/`. Thirteen cases.
+file per grader under `graders/`. Seventeen cases.
 
 ## Running them
 
@@ -33,7 +33,7 @@ claude -p --plugin-dir . \
   "$(awk 'f{print} /^---$/{n++; if(n==2) f=1}' evals/dialect-top-not-limit/prompt.md)"
 ```
 
-The `awk` drops the frontmatter. Nine cases also set `append_system_prompt`, which a manual run
+The `awk` drops the frontmatter. Fifteen cases also set `append_system_prompt`, which a manual run
 like this does not apply — see "Why some cases steer the model" below.
 
 ## Cost and time
@@ -43,7 +43,8 @@ contributor's account defaults to, which makes scores incomparable between contr
 a larger default model, roughly doubles the bill. `--model <name>` overrides the pin for one
 invocation; `--max-cost-usd <n>` aborts with exit 2 and partial results if a budget is hit.
 
-Measured on this machine, all thirteen cases:
+Measured on this machine when the suite held thirteen cases. The suite is now seventeen, so expect
+roughly a third more agent runs, time and cost than the figures below - these have not been re-measured:
 
 | Invocation | Agent runs | Time | Cost |
 |---|---|---|---|

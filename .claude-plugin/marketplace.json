@@ -10,7 +10,7 @@
     {
       "name": "teradata-vantage",
       "source": "./plugins/teradata-vantage",
-      "description": "Work with Teradata Vantage from Claude Code: bundled Teradata MCP server (read SQL, DBA, data quality, vector store, NOS/Iceberg), Teradata SQL dialect and error-code knowledge, DBA health and recovery runbooks, read-only SQL guard and destructive-write approval hooks, six agents (explorer, dba, tuner, auditor, archivist, vector) and read-only audit workflows. No telemetry; privacy statement at PRIVACY.md. Community plugin, not affiliated with or endorsed by Teradata Corporation.",
+      "description": "Work with Teradata Vantage from Claude Code: bundled Teradata MCP server (read SQL, DBA, data quality, vector store, NOS/Iceberg), Teradata SQL dialect and error-code knowledge, DBA health, workload management and recovery runbooks, in-database analytics, loading, migration, lineage and documentation skills, read-only SQL guard and destructive-write approval hooks, seven agents (explorer, dba, tuner, auditor, archivist, cartographer, vector) and four read-only workflows (health-audit, profile-database, sql-review, drop-impact). No telemetry; privacy statement at PRIVACY.md. Community plugin, not affiliated with or endorsed by Teradata Corporation.",
       "homepage": "https://github.com/fhawarneh/teradata-vantage-plugin",
       "category": "database",
       "tags": [
@@ -22,7 +22,12 @@
         "data-quality",
         "vector-store",
         "iceberg",
-        "nos"
+        "nos",
+        "workload-management",
+        "lineage",
+        "migration",
+        "data-loading",
+        "analytics"
       ],
       "relevance": {
         "topic": "Teradata",

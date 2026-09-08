@@ -1,8 +1,8 @@
 # Teradata Vantage Toolkit (Community)
 
 A Claude Code plugin for working with **Teradata Vantage**: it bundles the open-source Teradata MCP server, teaches
-Claude the Teradata SQL dialect and its error codes, ships DBA health and recovery runbooks, and puts a read-only
-guard in front of the query tool so an agent cannot write to your warehouse by accident.
+Claude the Teradata SQL dialect and its error codes, ships runbooks for health, workload, loading, migration,
+lineage and in-database analytics, and puts a read-only guard in front of the query tool so an agent cannot write to your warehouse by accident.
 
 > Community plugin. Not affiliated with, endorsed by, or sponsored by Teradata Corporation. Teradata, Vantage and
 > ClearScape Analytics are trademarks of Teradata Corporation.
@@ -30,7 +30,7 @@ runbooks, and wires up the tools to act on them.
   persist between sessions, but every recall reports its age, DDL invalidates it, and nothing enters
   the verified repository without a person confirming the answer was right — running without an error
   is explicitly not enough.
-- **The guards are tested, not asserted.** 572 tests cover the hooks, the launcher and the inventory, including the
+- **The guards are tested, not asserted.** 617 tests cover the hooks, the launcher and the inventory, including the
   direction each one fails in.
 - **It is useful before it is connected.** `/teradata-vantage:setup` runs the doctor and reports what is missing
   without contacting anything.
@@ -298,12 +298,12 @@ and calls in non-interactive `claude -p` runs, are not backgrounded — they blo
 Two tiers.
 
 **Unit** — `python3 -m pytest scripts/tests -q` from the plugin directory (needs `pytest` and `pyyaml`; no network,
-no Teradata). Over 400 tests covering the guards' allow / ask / deny decisions and each Python hook's fail direction —
+no Teradata). 617 tests, passing on Python 3.10 and 3.12, covering the guards' allow / ask / deny decisions and each Python hook's fail direction —
 the read guard, write gate and destructive-tool gate fail to ask on an internal crash, the coach, lint and secret
 guard fail silent, the host-ops gate fails open — plus the validator, the leak scan and the launcher scripts. The one
 gap: the bash session-start hook has no test.
 
-**Behaviour** — thirteen cases under `evals/` in the layout `claude plugin eval` reads (`prompt.md` plus
+**Behaviour** — seventeen cases under `evals/` in the layout `claude plugin eval` reads (`prompt.md` plus
 `graders/`), with a mock MCP layer so they run without a database. They pin the dialect corrections, the qmark
 parameter style, the `2644` / `3541` space diagnoses, schema from tools rather than memory, blast radius before a
 `DROP`, archive verify-before-delete, and the read-guard behaviour in both directions — it must refuse a

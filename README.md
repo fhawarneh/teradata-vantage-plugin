@@ -47,8 +47,9 @@ Full install, connection and usage instructions: **[plugins/teradata-vantage/REA
   `EXPLAIN`, `SHOW` or `HELP`; anything else is denied with a reason. Destructive writes and destructive tools raise
   an explicit approval prompt. The guards are mistake-prevention, not a security boundary — see [SECURITY.md](SECURITY.md). Telemetry: none; [PRIVACY.md](PRIVACY.md) states exactly what the plugin reads, writes locally, and sends.
 - **Operational runbooks** for space and health (`2644`, `3541`), performance (EXPLAIN, statistics, skew, DBQL),
-  data quality, NOS/Iceberg archiving, the Enterprise Vector Store, and node recovery when the system will not
-  accept logons.
+  workload management, data quality, loading and migration, lineage and documentation (`COMMENT`), in-database
+  analytics and pipelines, NOS/Iceberg archiving, the Enterprise Vector Store, and node recovery when the system
+  will not accept logons.
 - **Agents and read-only workflows** that take on a whole job: audit every database, profile a whole database,
   review a directory of SQL, or assess the blast radius before a `DROP`.
 
@@ -66,7 +67,7 @@ CONTRIBUTING.md                     how to change it without breaking it
 ## Developing
 
 There are two test tiers. The **pytest unit suite** (`scripts/tests`) is deterministic and needs no model or
-database — it covers the hooks, the guards and the tooling scripts. The **eval cases** (`evals/`, 8 of them) score
+database — it covers the hooks, the guards and the tooling scripts. The **eval cases** (`evals/`, 17 of them) score
 model behaviour and need a model.
 
 ```bash
@@ -75,7 +76,7 @@ python3 scripts/validate_plugin.py          # manifests, frontmatter, tool names
 python3 -m pytest scripts/tests -q          # unit tests over the hooks and the tooling scripts
 python3 scripts/check_no_leaks.py           # forbidden-token scan over the whole repository
 bash    scripts/vendor_server.sh --check    # vendored wheel matches its recorded hash
-claude plugin eval .                        # the 8 behaviour cases, scored against a no-plugin baseline arm
+claude plugin eval .                        # the 17 behaviour cases, scored against a no-plugin baseline arm
 ```
 
 CI runs the deterministic tier on every pull request and on pushes to `main`: the unit tests,

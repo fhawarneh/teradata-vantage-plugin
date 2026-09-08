@@ -96,7 +96,7 @@ the tests, `validate_plugin.py --repo .` (which carries the forbidden-token scan
 --check`, and `claude plugin validate --strict` on both roots as two separate steps, so a missing
 `claude` binary cannot silently downgrade the run.
 
-`claude plugin eval .` scores the 13 behaviour cases under `evals/`. It needs a model, so it is not
+`claude plugin eval .` scores the 17 behaviour cases under `evals/`. It needs a model, so it is not
 a CI gate — run it by hand when a skill, agent or hook changes behaviour.
 
 Then confirm by hand:
