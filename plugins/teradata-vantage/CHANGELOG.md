@@ -69,11 +69,18 @@ carried-forward commitments from 0.1.0 either closed or explicitly dropped.
 
 ### Context cost
 
-`claude plugin details` reports **~4,910 always-on tokens** for 15 skills and 7 agents, up from
-~2,666 at 0.1.0. Per-skill frontmatter is uniformly disciplined — 570 to 775 characters, every one
-inside the validator's 400-character-per-field limit. Reaching a lower number would mean deleting
-skills or cutting the `when_to_use` phrases that make them fire. Reference material still loads only
-when a skill needs it.
+**~3,389 always-on tokens** for 15 skills and 7 agents, measured with `claude plugin details` against
+a clean-HOME install of this release from GitHub — the path an actual user takes.
+
+Worth knowing if you measure it yourself and get a different answer: the same commit installed from a
+local directory reports **~4,965**, and the gap is systematic rather than random. Every component
+scales by roughly the same factor — `setup` is 160 against 240, `health` 200 against 290 — so it is
+the estimate that differs, not the plugin. The clean-install figure is the one quoted here because it
+reflects what someone installing from the marketplace gets. Treat either number as an estimate.
+
+Per-skill frontmatter is uniformly disciplined: 570 to 775 characters, every field inside the
+validator's 400-character limit, with no outlier to trim. Reference material still loads only when a
+skill needs it.
 
 ## 0.1.0 (2026-09-08)
 
