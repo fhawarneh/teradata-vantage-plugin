@@ -6,6 +6,7 @@ tools: ToolSearch, Bash, mcp__plugin_teradata-vantage_teradata__dba_databaseVers
 maxTurns: 40
 skills:
   - teradata-vantage:health
+  - teradata-vantage:workload
   - teradata-vantage:teradata-recovery
   - teradata-vantage:teradata-sql
 ---

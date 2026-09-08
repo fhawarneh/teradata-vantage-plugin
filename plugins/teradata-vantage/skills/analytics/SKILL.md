@@ -1,7 +1,7 @@
 ---
 name: analytics
 description: Use when the user wants to run analytics, statistics, feature engineering or machine-learning scoring inside Teradata Vantage rather than exporting rows to pandas or a notebook - the in-database ClearScape TD_* functions for transformation, profiling, model training and prediction, and the BYOM path for scoring an ONNX, PMML, H2O or Dataiku model on data that never leaves the database.
-when_to_use: run this analysis in the database; ClearScape Analytics; TD_ functions; in-database machine learning; score a model in Teradata; BYOM; ONNXPredict; PMMLPredict; H2OPredict; train a model on Teradata; one-hot encode; scale features; impute missing values; TD_KMeans; TD_DecisionForest; TD_GLM; feature engineering in SQL; should I pull this into pandas; TD_ColumnTransformer; TD_ScaleFit.
+when_to_use: run this analysis in the database; ClearScape Analytics; TD_ functions; in-database machine learning; score a model in Teradata; BYOM; ONNXPredict; PMMLPredict; H2OPredict; one-hot encode; scale features; impute missing values; TD_KMeans; TD_ScaleFit; feature engineering in SQL; should I pull this into pandas; AI_AskLLM; run an LLM inside Teradata; CompleteChat.
 license: MIT
 metadata:
   skill_type: documentation
@@ -14,6 +14,8 @@ allowed-tools:
   - mcp__plugin_teradata-vantage_teradata__base_columnDescription
   - mcp__plugin_teradata-vantage_teradata__qlty_columnSummary
   - mcp__plugin_teradata-vantage_teradata__qlty_univariateStatistics
+  - mcp__plugin_teradata-vantage_teradata__chat_completeChat
+  - mcp__plugin_teradata-vantage_teradata__chat_aggregatedCompleteChat
 ---
 
 # In-database analytics on Teradata Vantage
@@ -154,6 +156,32 @@ The model is stored as a row in a table (a `BLOB`), so scoring is a join, and th
 controlled by the table. `references/byom-scoring.md` carries the load and score forms and the failures
 worth knowing before the first attempt.
 
+## In-database AI
+
+LLM inference has the same shape as BYOM: run it where the rows are, or ship the rows out. Four routes,
+and which you have is a property of the system:
+
+| Route | What it is | On the system measured |
+|---|---|---|
+| `AI_AskLLM` | `TD_SYSFNLIB` table operator, two input tables | **present** |
+| `TD_API_VertexAI` / `AzureML` / `SageMaker` | call a hosted model; **rows leave the database** | present |
+| `chat_completeChat`, `chat_aggregatedCompleteChat` | MCP tools over the CompleteChat operator | **absent** — CompleteChat not installed |
+| `TD_MLDB.ONNXEmbeddings` | embeddings, fully local | present |
+
+Two things to check before offering any of them, and one to say afterwards:
+
+- **The `chat_*` tools register only when CompleteChat is installed AND `CHAT_API_KEY` is set.** When
+  either is missing they are simply not in your tool list.
+- **`AI_AskLLM` needs two input tables with specific aliases**, and the alias names are not discoverable
+  from the dictionary — `HELP FUNCTION` returns nothing for a table operator. They come from the release
+  documentation.
+- **Say whether data left the database.** `TD_API_*` sends rows to a provider; the others do not. For
+  regulated text that sentence is the answer, not a footnote.
+
+Most "use AI on this" requests are retrieval rather than generation — check before reaching for an LLM;
+`ONNXEmbeddings` plus the `vector-store` skill is cheaper and stays local. Full detail:
+`references/in-database-ai.md`.
+
 ## When NOT to do it in the database
 
 Be honest about this; the credibility of the recommendation depends on it.
@@ -184,3 +212,5 @@ the data is governed.
 - `references/clearscape-functions.md` — the function families, the `ON`/`DIMENSION`/`USING` call shape,
   the fit/transform contract, and how to discover what a release installs.
 - `references/byom-scoring.md` — loading a model into a table and scoring with `TD_MLDB.*`.
+- `references/in-database-ai.md` — `AI_AskLLM`, the `TD_API_*` hosted-model calls, the `chat_*`
+  tools and their availability gate, and which routes keep the data inside the database.

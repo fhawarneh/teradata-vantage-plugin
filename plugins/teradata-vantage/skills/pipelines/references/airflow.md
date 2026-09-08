@@ -79,6 +79,9 @@ of a green run over a table nobody loaded. A pipeline that cannot fail is not a 
 - **`catchup=True` on a first deploy** backfills every interval since `start_date` at once. Against a
   warehouse that means dozens of concurrent sessions and, usually, flow control. Set it to `False`
   unless a backfill is what you want, and bound it with `max_active_runs`.
+- **Tag the pipeline with a query band.** `SET QUERY_BAND = 'app=airflow;dag={{ dag.dag_id }};' FOR
+  SESSION;` as the first statement of a task puts the DAG id into `DBC.QryLogV.QueryBand`, which turns
+  "which job ran this" from guesswork into a `WHERE` clause. See the `workload` skill.
 - **Parallelism against the warehouse, not against Airflow.** Task concurrency is limited by the
   warehouse's throughput and its workload rules, not by the worker count. `dba_flowControl` and
   `dba_userDelay` show whether Teradata is throttling the load — if it is, more workers make it worse.

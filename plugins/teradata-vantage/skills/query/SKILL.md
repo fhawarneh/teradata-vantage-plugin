@@ -191,8 +191,12 @@ name them. If they have not confirmed it, do not promote it; there is no hurry.
   >= 10,000,000 as `153.77M` / `2.27B` (2 decimals) next to the exact value. Thousand separators on counts. No
   currency symbol unless the column or the user says which currency it is.
 - Say "the data shows" instead of naming tools.
-- Charts: `plot_line_chart(table_name, labels, columns)`, `plot_pie_chart(table_name, labels, column)` (and polar/radar)
-  read a TABLE or VIEW, not an ad-hoc result set - to chart an aggregate, first materialise it with
+- Charts - all four tools: `plot_line_chart(table_name, labels, columns)` and
+  `plot_radar_chart(table_name, labels, columns)` take MULTIPLE value columns;
+  `plot_pie_chart(table_name, labels, column)` and `plot_polar_chart(table_name, labels, column)` take ONE.
+  Radar compares several measures across categories (one axis per category); polar is a pie whose slices vary
+  by radius rather than angle - reach for it when the magnitudes differ enough that arc length is hard to read.
+  All four read a TABLE or VIEW, not an ad-hoc result set - to chart an aggregate, first materialise it with
   `base_readQuery(persist: true)` and pass `metadata.volatile_table` as `table_name` (same pool caveat as section 1;
   the persisted SELECT must contain no `ORDER BY` - persist the whole aggregate and let the chart tool order it,
   never a `TOP n ... ORDER BY` ranking, which persists as an arbitrary n rows),

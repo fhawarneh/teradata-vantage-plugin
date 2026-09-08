@@ -95,7 +95,7 @@ Notes on the definitions:
 | `UII` | I/O-intensity per CPU | high UII ⇒ full scans of large tables with little work per block — index/partition candidates |
 | `NumSteps` | plan complexity | > 30 steps: nested views / correlated subqueries |
 | `SpoolUsage` | peak spool bytes | compare with the user's SPOOL allocation; 2646 when exceeded |
-| `DelayTime` | seconds queued by workload management | not a tuning problem — a concurrency/TASM one |
+| `DelayTime` | seconds queued by workload management | not a tuning problem — a concurrency/TASM one; the `workload` skill owns it |
 | `ErrorCode` | non-zero = failed (2646 spool, 3156 aborted, 3110 user abort, 2631 deadlock, 3130 response limit) | |
 
 **Decision framework** (as encoded in the bundled clustering tool):
