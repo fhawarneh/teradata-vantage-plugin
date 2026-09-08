@@ -1,5 +1,80 @@
 # Changelog
 
+## 0.2.0 (2026-09-08)
+
+Two capability areas the plugin shipped tools for but taught nowhere, a pipelines skill, and the
+carried-forward commitments from 0.1.0 either closed or explicitly dropped.
+
+### Added
+
+- **`lineage` skill and the `cartographer` agent.** The bundled server exposes seven `graph_*`
+  dependency tools and a `graph://edge-contract` resource that appeared in no skill, agent or
+  workflow — and that cannot run at all until an edge repository exists, because `edge_repository`
+  is a required argument and Teradata has no dependency catalog to default to. The skill leads with
+  that prerequisite and covers both ways to populate one: structural edges parsed from view
+  `RequestText`, and observed edges from the DBQL object log. Proved end to end before shipping —
+  853 views yielded 530 edges with 95 references skipped, and a real blast-radius question returned
+  12 dependent views.
+- **`analytics` skill**, with references for the ClearScape `TD_*` functions and BYOM scoring.
+  In-database analytics and scoring an ONNX, PMML, H2O, Dataiku or DataRobot model where the data
+  already is.
+- **`pipelines` skill**, with references for dbt-teradata and the Airflow Teradata provider.
+- **`teradata-sql/references/porting-sql.md`.** 54 constructs from other dialects, each executed
+  against a live system, with the error code Teradata actually returns.
+- **`vector-store/references/rag-workflow.md`.** What `rag_Execute_Workflow` is, and what it is not.
+- **Temporal tables and the `PERIOD` type** folded into `teradata-sql/references/physical-design.md`.
+- **Two eval cases** — an empty dependency result is not proof of safety, and 400 million rows
+  should be scored where they live.
+- **`experimental.evals` declared in the manifest**, with `PLUGIN_JSON_ALLOWED` widened to match.
+- **Optional surfaces are now documented with activation steps** — the output style, the theme and
+  the health monitor each had been named in a single clause with no way to turn them on.
+
+### Fixed
+
+- **`agents/vector.md` could not run the permission workflow its own skill documents** —
+  `tdvs_grant_user_permission` and `tdvs_revoke_user_permission` were missing from its tools.
+- **`workflows/drop-impact.js` hand-wrote weaker DBQL lineage SQL** while seven purpose-built
+  dependency tools sat unused. It now prefers structural lineage when a repository is available and
+  says so honestly when it is not.
+- **`vector-store/references/in-database-vectors.md` named `mldb`**, which does not exist. The BYOM
+  functions live in `TD_MLDB`. The same error appears in the upstream server's own documentation.
+- **Theme contrast.** `promptBorder` measured 3.36 against a dark background — the dimmest token in
+  the theme, on the element that asks you to approve a destructive write. Now 4.89, with every token
+  above WCAG AA 4.5, and `error` moved so the two are 46% further apart.
+- **The release zip had two implementations.** CI built it with its own inline `zipfile` code while
+  `release.py` had `build_zip`, so the two could ship different archives. CI now calls
+  `release.py --zip-only`.
+
+### Changed
+
+- **The hidden-Unicode rule is now documented in `CONTRIBUTING.md`.** The validator has always
+  enforced it; the rule that bit this repository — the forbidden-token list held the characters as
+  literals, so the file banning them contained them — is now written down.
+- **A repo-root `CLAUDE.md`** imports `CONTRIBUTING.md`, so the contributor rules load for anyone
+  working on the plugin itself.
+
+### Not done, and why
+
+- **The `teradata-sqlfluff-lsp` companion plugin is dropped, not deferred again.** 0.1.0 excluded a
+  `.lsp.json` from this plugin for a good reason — a `.sql` LSP entry is exclusive, so it would
+  hijack the extension for every project the user opens — and recorded a companion plugin for
+  0.2.0. On review the companion would largely duplicate what the `sql_lint.py` hook already does
+  for Claude Code, while adding a second plugin to maintain and a real risk of surprising people who
+  install it. Saying so is better than carrying it forward a third time.
+- **The four upstream changes proposed in `servers/VENDORED.md` have not been filed.** They are
+  written up in proposal shape, and filing against someone else's repository is a decision for a
+  maintainer rather than an automated run. See *Filing status* in that file.
+- **The new eval cases have not been executed.** `claude plugin eval` is gated behind early access
+  and was unavailable at release time. The cases validate structurally; their scores are unmeasured.
+
+### Context cost
+
+`claude plugin details` reports **~4,910 always-on tokens** for 15 skills and 7 agents, up from
+~2,666 at 0.1.0. Per-skill frontmatter is uniformly disciplined — 570 to 775 characters, every one
+inside the validator's 400-character-per-field limit. Reaching a lower number would mean deleting
+skills or cutting the `when_to_use` phrases that make them fire. Reference material still loads only
+when a skill needs it.
+
 ## 0.1.0 (2026-09-08)
 
 First release of the `teradata-vantage` plugin — a community toolkit for working with Teradata Vantage from

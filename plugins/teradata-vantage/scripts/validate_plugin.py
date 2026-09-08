@@ -77,7 +77,7 @@ SCAN_SUFFIXES = frozenset({".md", ".json", ".yaml", ".yml", ".js", ".py", ".sh",
 PLUGIN_JSON_ALLOWED = frozenset(
     {
         "$schema", "name", "displayName", "version", "description", "author", "homepage", "repository", "license",
-        "keywords", "metadata", "defaultEnabled", "userConfig", "dependencies",
+        "keywords", "metadata", "defaultEnabled", "userConfig", "dependencies", "experimental",
     }
 )
 PLUGIN_JSON_FORBIDDEN = {

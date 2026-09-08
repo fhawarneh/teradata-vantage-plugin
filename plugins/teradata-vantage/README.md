@@ -24,6 +24,10 @@ runbooks, and wires up the tools to act on them.
 - **The read guard and the write gate fail to *ask*, not to allow**, when the script itself crashes or gets a payload
   shape it does not recognise — a direction pinned by the test suite. The case where a hook cannot run at all is
   different and is disclosed under [Platform support](#platform-support).
+- **Four multi-agent workflows.** `health-audit`, `profile-database`, `sql-review` and `drop-impact` fan out
+  read-only probes in parallel and report a verdict with its evidence. `drop-impact` never emits a `DROP`.
+- **The guards are tested, not asserted.** 572 tests cover the hooks, the launcher and the inventory, including the
+  direction each one fails in.
 - **It is useful before it is connected.** `/teradata-vantage:setup` runs the doctor and reports what is missing
   without contacting anything.
 - **The context cost is measurable.** `claude plugin details` reports what the plugin adds to every session; the
@@ -217,9 +221,22 @@ Switches: `TERADATA_SQL_GUARD_MODE=enforce|audit`, `TERADATA_ALLOW_WRITES=0`, `T
 
 ### Also included
 
-Four curated server tool profiles (`tv_all` by default, `tv_readonly`, `tv_analyst`, `tv_dba`; select one with
-`TERADATA_MCP_PROFILE`), a health monitor the `health` skill arms when a credential file is stored (`TERADATA_MONITORS=0` disables it), a
-verdict-first DBA report output style, a `Warehouse Dark` theme, and an eval suite under `evals/`.
+Four curated server tool profiles — `tv_all` (default), `tv_readonly`, `tv_analyst`, `tv_dba`. Select one with
+`TERADATA_MCP_PROFILE`. There is also an eval suite under `evals/`, run with `claude plugin eval .`.
+
+### Optional surfaces, and how to turn them on
+
+Three surfaces ship switched off or unselected, because none of them should change your session without you
+asking. None is required, and each is one step:
+
+| Surface | Turn it on | What it does |
+|---|---|---|
+| **Teradata DBA report** output style | `/config` → Output style → *Teradata DBA report* | Verdict first, then evidence, then the next action. Suits health and audit work; leave it off for ordinary coding |
+| **Warehouse Dark** theme | `/theme` → *Warehouse Dark* | A dark theme tuned so the guards' prompt colour is distinguishable from the error colour |
+| **Health monitor** | Armed by the `health` skill once a credential file is stored | Periodic local health check. `TERADATA_MONITORS=0` disables it |
+
+The output style is deliberately not forced. A plugin that silently rewrites how every answer in your session is
+formatted is doing something you did not ask for, so this one waits to be chosen.
 
 ## Safety model — read this once
 

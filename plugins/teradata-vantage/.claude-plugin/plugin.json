@@ -54,5 +54,8 @@
       "required": false,
       "default": false
     }
+  },
+  "experimental": {
+    "evals": "evals"
   }
 }

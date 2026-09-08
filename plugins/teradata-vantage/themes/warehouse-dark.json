@@ -4,7 +4,7 @@
   "overrides": {
     "claude": "#f97316",
     "claudeShimmer": "#fdba74",
-    "promptBorder": "#c2410c",
+    "promptBorder": "#ea580c",
     "promptBorderShimmer": "#fb923c",
     "permission": "#fb923c",
     "permissionShimmer": "#fed7aa",
@@ -13,7 +13,7 @@
     "bashBorder": "#facc15",
     "warning": "#f59e0b",
     "warningShimmer": "#fcd34d",
-    "error": "#ef4444",
+    "error": "#f87171",
     "success": "#22c55e",
     "suggestion": "#fdba74",
     "remember": "#fb923c",

@@ -137,3 +137,25 @@ access control.
   transport choices, leaving `stdio` and `streamable-http`. It also fixes the two `tdvs_*_permission` override keys
   and annotates `tdvs_destroy` destructive. When that ships in a release, treat it as a full re-vendor: run the
   whole checklist above, including the bridge-mode re-test.
+
+### Filing status
+
+**None of the changes above has been filed upstream.** They are written as proposals here so the
+analysis is not lost, not because a pull request exists. Filing them is a deliberate act against
+someone else's repository and belongs to whoever maintains this plugin, not to an automated run.
+
+Each row is already in proposal shape: the gap, the consequence, and the specific change. To file
+one, open an issue on `Teradata/teradata-mcp-server` quoting the row, and reference the upstream
+version this was measured against — 0.2.6, tag `v0.2.6`, commit `0de3368b`.
+
+Two of them are worth filing first, because they cost an upstream user something today rather than
+in an edge case:
+
+- **The `CUSTOMIZING.md` `LIMIT` example.** Copied verbatim, the documented example tool fails on
+  Teradata with error 3706. It is a one-line documentation fix and it misleads every reader who
+  follows the guide.
+- **The tool annotations.** Seven tools that write — including two that create and drop tables —
+  advertise `readOnlyHint=True, idempotentHint=True`, because the two override keys in
+  `_TOOL_ANNOTATIONS` do not match the registered tool names. A client that decides whether to
+  confirm from those hints would not prompt before a destructive call. This plugin does not rely on
+  the hints, which is why it is safe here; another client might.

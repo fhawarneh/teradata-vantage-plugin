@@ -55,6 +55,16 @@ Most rules exist because breaking them fails **silently** at runtime:
   `<db>.<table>` and generic names such as `sales_fact`, `customer_dim`. Fixtures must be synthetic. See *Keeping
   site-specific content out* below for where site names go instead.
 
+- **No hidden Unicode, anywhere.** `validate_plugin.py` scans every `.md`, `.json`, `.yaml`, `.yml`, `.js`, `.py`,
+  `.sh` and `.cfg` file for bidirectional-override and zero-width characters and fails the build on any hit. These
+  are the characters that let displayed text differ from what a tool actually executes, so a reviewer reading a
+  diff cannot see the difference. The one exemption is the forbidden-token list itself, by basename, because its
+  whole job is to name them.
+
+  This rule bit the repository once: `scripts/data/forbidden_tokens.txt` held the characters as **literals**, so
+  the file that bans them contained them. Write them as escape sequences or by code point, never as themselves. The
+  same applies to any right-to-left script in a test fixture — put the code point in, not the glyph.
+
 ## Keeping site-specific content out
 
 The token list is deliberately split in two, and the split is the contract:
