@@ -26,6 +26,10 @@ runbooks, and wires up the tools to act on them.
   different and is disclosed under [Platform support](#platform-support).
 - **Four multi-agent workflows.** `health-audit`, `profile-database`, `sql-review` and `drop-impact` fan out
   read-only probes in parallel and report a verdict with its evidence. `drop-impact` never emits a `DROP`.
+- **A grounding cache that never becomes an authority.** Derived schema and human-verified queries
+  persist between sessions, but every recall reports its age, DDL invalidates it, and nothing enters
+  the verified repository without a person confirming the answer was right — running without an error
+  is explicitly not enough.
 - **The guards are tested, not asserted.** 572 tests cover the hooks, the launcher and the inventory, including the
   direction each one fails in.
 - **It is useful before it is connected.** `/teradata-vantage:setup` runs the doctor and reports what is missing

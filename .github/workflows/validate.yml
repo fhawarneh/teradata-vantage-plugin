@@ -5,6 +5,11 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+  schedule:
+    # Weekly canary for the validate-latest job below: a new CLI release can add a validator
+    # warning, and --strict treats warnings as errors. Catching that on a schedule means it
+    # surfaces here rather than on someone's unrelated pull request.
+    - cron: "17 6 * * 1"
 
 # Read-only by default; no job here writes to the repository.
 permissions:
@@ -24,6 +29,28 @@ env:
   CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: "1"
 
 jobs:
+  # The hooks run under whatever bare `python3` the user has, which is not necessarily the version
+  # the vendored server needs (>=3.11). 3.10 is a real user configuration -- Ubuntu 22.04 ships it --
+  # so the guards are tested there too. Verified locally before this matrix was added: the full
+  # suite passes on 3.10.
+  tests:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.12"]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Unit tests
+        run: |
+          python -m pip install --quiet pytest pyyaml
+          python -m pytest plugins/teradata-vantage/scripts/tests -q -p no:cacheprovider
+      - name: Every shipped script imports on this version
+        run: python -m compileall -q plugins/teradata-vantage/hooks plugins/teradata-vantage/scripts
+
   validate:
     runs-on: ubuntu-latest
     steps:
@@ -39,11 +66,6 @@ jobs:
         run: |
           npm install -g "@anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}"
           claude --version
-
-      - name: Unit tests
-        run: |
-          python -m pip install --quiet pytest pyyaml
-          python -m pytest plugins/teradata-vantage/scripts/tests -q -p no:cacheprovider
 
       # --no-cli because the two `claude plugin validate --strict` runs are separate steps below;
       # without it validate_plugin.py runs them a second time.
@@ -68,6 +90,9 @@ jobs:
   # warning shows up here first. It cannot fail the build.
   validate-latest:
     runs-on: ubuntu-latest
+    # Weekly (and on demand), not on every push: its job is to notice a NEW CLI release breaking
+    # strict validation, which has nothing to do with the commit that happens to trigger CI.
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     continue-on-error: true
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

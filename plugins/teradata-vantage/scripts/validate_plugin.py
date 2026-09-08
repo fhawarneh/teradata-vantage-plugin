@@ -455,6 +455,17 @@ def check_skills(plugin: Path, inv: Inventory, workflows: Dict[str, Path], rep: 
             rep.warn("skill.metadata", where, "metadata.version should be a quoted string like \"1.0.0\"")
         if "paths" in fm and sdir.name != "sql-files":
             rep.warn("skill.paths", where, "`paths` LIMITS activation; only the file-scoped skill (sql-files) should carry it")
+        # A user-invocable skill is offered with its arguments; without argument-hint the user is
+        # shown a bare name and has to guess what it takes. A background skill is never invoked by
+        # hand, so a hint there is dead frontmatter -- flag that direction too.
+        invocable = fm.get("user-invocable", True) is not False
+        has_hint = isinstance(fm.get("argument-hint"), str) and fm["argument-hint"].strip()
+        if invocable and not has_hint:
+            rep.warn("skill.argument-hint", where,
+                     "user-invocable skill has no argument-hint; the user sees a bare name")
+        if not invocable and has_hint:
+            rep.warn("skill.argument-hint", where,
+                     "argument-hint on a background skill (user-invocable: false) is never shown")
         for key in fm:
             if key not in SKILL_KNOWN_KEYS:
                 rep.warn("skill.frontmatter", where, f"unknown frontmatter key {key!r}")

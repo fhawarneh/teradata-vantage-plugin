@@ -7,6 +7,7 @@ metadata:
   skill_type: workflow
   category: teradata
   version: "1.0.0"
+argument-hint: "[<question in plain English> | fix <error code> | <SQL to review>]"
 allowed-tools:
   - Read
   - Grep
@@ -29,6 +30,30 @@ upstream 0.2.6 server registers, and the plugin holds it read-only. Writes go th
 `mcp__plugin_teradata-vantage_teradata__base_writeQuery` ONLY when the server you are connected to provides that tool
 (section 2). The plugin's hooks shape how both behave; work with them, never around them. Dialect rules live in the
 `teradata-sql` skill (loaded automatically); the ones that fail most often are repeated in the stop-check below.
+
+## 0. Before you write SQL, look at what is already known
+
+Two stores persist between sessions under the plugin's data directory, driven by
+`scripts/grounding.py`. **Both are accelerators, never authorities** — they save a round trip, they
+never settle a question.
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/grounding.py" list                      # verified queries
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/grounding.py" recall-schema <db>.<tbl>  # cached columns/PI
+```
+
+- **A verified query is a starting point to re-check, not an answer to hand back.** Read it, confirm
+  the objects still exist and still mean what it assumed, then run it. Say that it came from the
+  repository, who confirmed it, and how old it is.
+- **`recall-query` matches on exact normalised text only** — case and whitespace. It will not decide
+  that two differently-worded questions mean the same thing, because that is a judgement about
+  meaning and it belongs to you, not to a script. When the exact lookup misses, run `list` and choose.
+- **Every recall reports `age_seconds` and `stale`. State the age.** A cached column list that
+  survived an `ALTER TABLE` is worse than no cache, because it is confidently wrong. Anything
+  load-bearing gets re-derived with `base_tableDDL` regardless of what the cache says.
+- After any DDL, invalidate: `grounding.py invalidate --sql '<the statement>'`.
+
+Nothing enters the verified repository automatically. See section 3 for the gate.
 
 ## 1. Read path (`base_readQuery`)
 
@@ -129,6 +154,20 @@ cannot be built from the columns that exist, say what is missing instead of retu
 requested name. Deriving a measure by arithmetic across existing columns is a definition, not a substitute. Never
 answer a 0-row result by silently dropping the user's filter; report the empty window and the data's actual
 `MIN`/`MAX` of the filtered column.
+
+**When the loop ends in a right answer, consider promoting it.** The gate is deliberately strict and
+has two conditions, both required:
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/grounding.py" verify-query \
+  --question "<the user's question>" --sql "<the statement>" \
+  --executed-cleanly --confirmed-by "<who confirmed the ANSWER>" --objects <db>.<tbl>
+```
+
+`--executed-cleanly` alone is refused. **SQL that runs is not SQL that is correct** — a wrong join
+returning plausible numbers runs perfectly, and promoting on execution would fill the repository with
+confident mistakes for the next session to trust. Ask the user to confirm the answer was right, and
+name them. If they have not confirmed it, do not promote it; there is no hurry.
 
 ## 4. Result-size discipline
 

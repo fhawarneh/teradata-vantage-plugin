@@ -7,6 +7,7 @@ metadata:
   skill_type: workflow
   category: teradata
   version: "1.0.0"
+argument-hint: "[<database> | <db>.<table> | columns <db>.<table> | quality <db>.<table>]"
 allowed-tools:
   - Read
   - Grep

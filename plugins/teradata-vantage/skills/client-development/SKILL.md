@@ -3,6 +3,7 @@ name: client-development
 description: Use when writing or debugging application code that connects to Teradata Vantage - the teradatasql Python driver, teradataml, SQLAlchemy through teradatasqlalchemy, or JDBC. Covers connecting, the qmark parameter style, transaction and session mode, the DBAPI exception hierarchy, pooling, and the patterns that turn a working script into a slow or unsafe one.
 when_to_use: connect to Teradata from Python; teradatasql; teradataml; teradatasqlalchemy; JDBC URL for Teradata; how do I parameterise a query; my placeholders do not work; TypeError or 3706 with %s placeholders; executemany; insert a dataframe into Teradata; ANSI vs TERA mode; autocommit; connection pool; LOGMECH LDAP or KRB5; read a Teradata table into pandas; which library should I use.
 license: MIT
+argument-hint: "[connect python | parameters | teradataml | sqlalchemy | jdbc | pooling]"
 allowed-tools:
   - mcp__plugin_teradata-vantage_teradata__base_readQuery
   - mcp__plugin_teradata-vantage_teradata__base_tableDDL

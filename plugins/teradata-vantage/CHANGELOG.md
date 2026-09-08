@@ -1,5 +1,58 @@
 # Changelog
 
+## 0.3.0 (2026-09-08)
+
+The remaining backlog from the 0.2.0 plan, implemented rather than deferred. Released as 0.3.0
+because 0.2.0 was already tagged and published; moving a published tag is worse than a version number.
+
+### Added
+
+- **A grounding cache and verified-query repository** (`scripts/grounding.py`), persisting derived
+  schema and human-confirmed SQL between sessions, wired into the `query` skill ahead of its repair
+  loop. Three properties make it safe rather than merely fast:
+  - **Every recall reports `age_seconds` and `stale`**, and an entry with no timestamp is treated as
+    stale rather than fresh. A cached column list that survived an `ALTER TABLE` is worse than no
+    cache, because it is confidently wrong — so DDL invalidates, deliberately bluntly.
+  - **The promotion gate needs a human.** Clean execution alone is refused: a wrong join returning
+    plausible numbers runs perfectly, and promoting on execution would fill the repository with
+    confident mistakes for the next session to trust.
+  - **Lookup is exact-normalised only** — case and whitespace, nothing more. Deciding that two
+    differently-worded questions mean the same thing is a judgement about meaning, and it belongs to
+    the model reading `list`, never to keyword logic in a script. A test pins that absence.
+
+  Only a digest of the connection target is stored, the files are `0600`, and a corrupt store
+  degrades to empty rather than failing the session.
+- **Static checks over `workflows/*.js`** (`scripts/tests/test_workflow_static.py`). Three mistakes
+  that were previously invisible until a fan-out had already been paid for: an `agentType` naming an
+  agent that does not exist, a schema whose `required` names a key its `properties` omits, and a
+  phase entered but not declared in `meta.phases` (or the reverse). Each check was mutation-tested —
+  broken deliberately, confirmed to fail, restored.
+- **`argument-hint` on every user-invocable skill**, plus a validator rule that keeps it that way in
+  both directions: an invocable skill without one, and a background skill carrying one that is never
+  shown.
+
+### Changed
+
+- **CI now tests on a Python matrix, 3.10 and 3.12.** The hooks run under whatever bare `python3` a
+  user has, which is not the version the vendored server needs. Verified locally before asserting it
+  in CI: the full suite passes on 3.10.
+- **The `validate-latest` canary moved to a weekly schedule** instead of every push. Its job is to
+  notice a new CLI release breaking strict validation, which has nothing to do with whichever commit
+  happened to trigger CI.
+
+### Not done, and why
+
+- **`compatibility:`, `color:` and `effort:` frontmatter were not added.** The plan called for them,
+  and the validator's allowlist already permits them, but I could not demonstrate that any of the
+  three is actually read — `claude plugin validate` checks only `plugin.json`, and unknown YAML keys
+  in skill and agent frontmatter are silently ignored. Shipping fields that may do nothing is exactly
+  the kind of unverified claim this plugin is built to avoid, and `effort:` in particular could
+  silently change reasoning effort. They remain allowed for a contributor who has a reason.
+
+### Test count
+
+617, up from 572, passing on both 3.10 and 3.12.
+
 ## 0.2.0 (2026-09-08)
 
 Two capability areas the plugin shipped tools for but taught nowhere, a pipelines skill, and the
