@@ -162,6 +162,8 @@ Four prompts that each put a different part of the plugin to work. Run them afte
 | `archive` | Moving cold data to object storage as Parquet (NOS) or Apache Iceberg, and back |
 | `vector-store` | Teradata Enterprise Vector Store, and in-database vectors (`VECTOR32`, `TD_VECTORDISTANCE`) |
 | `client-development` | Application code that talks to Vantage: `teradatasql`, `teradataml`, SQLAlchemy, JDBC; the qmark parameter style, session mode, pooling |
+| `lineage` | What depends on an object, what feeds it, what breaks if it changes; cycles, root objects and migration waves, over an edge repository |
+| `analytics` | Running analytics in the database instead of extracting to a notebook: the ClearScape `TD_*` fit/transform functions, and BYOM scoring of ONNX, PMML, H2O, Dataiku and DataRobot models |
 | `teradata-sql` | *(background)* The dialect rules and error-code repair, applied whenever SQL is written |
 | `teradata-recovery` | *(background)* The system will not accept logons: `pdestate`, FATAL vprocs, crash loops. Requires OS access to the Teradata node |
 | `sql-files` | *(background)* Reading and writing `.sql` / `.bteq` / `.btq` / `.ddl` / `.dml` scripts on disk: BTEQ structure, return codes, and what the sqlfluff hook does |
@@ -178,6 +180,7 @@ the skill needs it.
 | `tuner` | Read-only performance work: plans, statistics, skew, DBQL history, SQL review |
 | `archivist` | Cold-data archiving to Native Object Store or Iceberg, and back. Verifies the copy round-trips before anything is deleted |
 | `vector` | The Enterprise Vector Store lifecycle: create, inspect, search, repair a `CREATE FAILED` store, destroy. Every destructive step prompts |
+| `cartographer` | Object lineage and dependency analysis. Owns the edge repository the `graph_*` tools require. Read-only, never emits a `DROP` |
 | `auditor` | Restricted read-only probe, dispatched by the workflows; not for direct use |
 
 ```bash

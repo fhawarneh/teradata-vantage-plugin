@@ -176,6 +176,9 @@ loads ONE config directory), set `TERADATA_MCP_CONFIG_DIR` and `TERADATA_MCP_PRO
   exposed by `/mcp`).
 - **MCP resources**: `glossary://all`, `glossary://definitions`, `glossary://term/{term_name}` (when a glossary is
   loaded) and `graph://edge-contract`; reference them with `@` mentions in the form `/mcp` shows.
+  `graph://edge-contract` is the schema the seven `graph_*` dependency tools read from: they take an
+  `edge_repository` argument and Teradata has no dependency catalog to default to, so the table must exist
+  before any of them work. The `lineage` skill covers building and populating one.
 - The generated tool inventory is in `references/tool-inventory.md`.
 
 ## Rules for this skill

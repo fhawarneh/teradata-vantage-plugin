@@ -1,10 +1,10 @@
 export const meta = {
   name: 'drop-impact',
   description: 'Blast-radius report before dropping Teradata objects: DBQL usage impact, table affinity and lineage per object in parallel, then one GO / VERIFY-FIRST / NO-GO report that never emits a DROP',
-  whenToUse: 'Launched by the teradata-vantage archive and query skills before any DROP, REPLACE or archive of one or more tables or views -- worth a workflow even for one object, because the stakes are irreversible. args: {objects: string[] as "database.table", days?: number, asOf?: string}. Started with no args it does nothing and returns {started: false} with instructions. Strictly read-only: the auditor agent probes DBQL and the data dictionary and has no write tools; the report never contains a DROP statement.',
+  whenToUse: 'Launched by the teradata-vantage archive, lineage and query skills before any DROP, REPLACE or archive of one or more tables or views -- worth a workflow even for one object, because the stakes are irreversible. args: {objects: string[] as "database.table", days?: number, asOf?: string, edgeRepository?: string}. Pass edgeRepository to add a structural dependency probe through graph_traceLineage; without it the workflow uses DBQL evidence alone, which is blind to objects that exist but were not queried in the window. Started with no args it does nothing and returns {started: false} with instructions. Strictly read-only: the auditor agent probes DBQL and the data dictionary and has no write tools; the report never contains a DROP statement.',
   phases: [
     { title: 'Resolve', detail: 'confirm each named object exists and what kind it is' },
-    { title: 'Probe', detail: 'per object: usage impact, affinity and DBQL lineage in parallel' },
+    { title: 'Probe', detail: 'per object: usage impact, affinity, DBQL lineage and (when an edge repository is given) structural lineage, in parallel' },
     { title: 'Assess', detail: 'per object: a tool-free blast-radius verdict from its own probes' },
     { title: 'Report', detail: 'one agent merges the objects into a single GO / VERIFY-FIRST / NO-GO report' }
   ]
@@ -14,6 +14,9 @@ const T = 'mcp__plugin_teradata-vantage_teradata__'
 const AGENT = 'teradata-vantage:auditor'
 const MAX_OBJECTS = 25
 const OBJ_RE = /^[A-Za-z_][A-Za-z0-9_$#]*\.[A-Za-z_][A-Za-z0-9_$#]*$/
+// An edge repository conforming to graph://edge-contract. Optional: DBQL evidence answers "was it used",
+// structural lineage answers "does anything reference it", and only the second survives an idle window.
+const REPO_RE = /^[A-Za-z_][A-Za-z0-9_$#]*\.[A-Za-z_][A-Za-z0-9_$#]*$/
 
 let a = args
 if (typeof a === 'string') { try { a = JSON.parse(a) } catch (e) { a = null } }
@@ -28,6 +31,8 @@ if (bare) {
 }
 
 const DAYS = Number.isInteger(a.days) && a.days > 0 && a.days <= 365 ? a.days : 90
+const REPO = typeof a.edgeRepository === 'string' && REPO_RE.test(a.edgeRepository.trim())
+  ? a.edgeRepository.trim() : ''
 const AS_OF = typeof a.asOf === 'string' && a.asOf.trim() !== '' ? a.asOf.trim() : null
 const requested = Array.isArray(a.objects) ? a.objects : []
 const wellFormed = requested.filter(function (o) { return typeof o === 'string' && OBJ_RE.test(o.trim()) }).map(function (o) { return o.trim() })
@@ -41,6 +46,11 @@ if (OBJECTS.length === 0) {
 }
 if (requested.length > wellFormed.length) log((requested.length - wellFormed.length) + ' entry/entries in args.objects were not a plain "database.table" name and were NOT assessed')
 if (wellFormed.length > dedup.length) log((wellFormed.length - dedup.length) + ' duplicate object name(s) collapsed')
+if (a.edgeRepository && !REPO) log('args.edgeRepository is not a plain "database.object" name and was IGNORED; '
+  + 'the structural-lineage probe did not run')
+if (!REPO) log('No args.edgeRepository given: this run uses DBQL evidence only. DBQL shows what was USED in the '
+  + 'window, not what REFERENCES the object, so a view that exists but was not queried will not appear. '
+  + 'Build an edge repository (see the lineage skill) and pass it to close that gap.')
 if (dedup.length > MAX_OBJECTS) log('args.objects names ' + dedup.length + ' objects; assessing the first ' + MAX_OBJECTS + ' and SKIPPING ' + (dedup.length - MAX_OBJECTS) + ': ' + dedup.slice(MAX_OBJECTS).join(', ') + ' -- run the workflow again for those')
 
 const RULES = [
@@ -67,7 +77,7 @@ const PROBE = {
   required: ['object', 'probe', 'status', 'summary'],
   properties: {
     object: { type: 'string' },
-    probe: { type: 'string', enum: ['usage-impact', 'affinity', 'dbql-lineage'] },
+    probe: { type: 'string', enum: ['usage-impact', 'affinity', 'dbql-lineage', 'structural-lineage'] },
     status: { type: 'string', enum: ['ok', 'empty', 'error', 'unavailable'] },
     errorCode: { type: 'string' },
     summary: { type: 'string', description: 'what the probe found, in one to three lines, with the numbers as returned; for empty: "no usage recorded in the available DBQL window"' },
@@ -151,7 +161,23 @@ const assessments = (await pipeline(
           { label: 'lineage:' + obj, phase: 'Probe', agentType: AGENT, schema: PROBE, effort: 'medium' }
         )
       }
-    ]).then(function (p) {
+    ].concat(REPO ? [
+      function () {
+        return agent(
+          RULES + '\n\nTASK: probe = "structural-lineage" for ' + obj + '. object = "' + obj + '".\n' +
+          'This probe answers a different question from the DBQL ones: what REFERENCES this object, whether or not anything ran.\n' +
+          'Call ' + T + 'graph_traceLineage with object_name = "' + obj + '" (ALREADY QUALIFIED -- never shorten it; a bare object name ' +
+          'returns zero nodes with status success and would read as "nothing depends on it"), edge_repository = "' + REPO + '", ' +
+          'max_depth_down = 5, max_depth_up = 1, return_format = "detailed".\n' +
+          'Put every downstream object in dependents with its depth. status = ok when nodes were returned; empty when the graph has no edge for it -- ' +
+          'and for empty write "no edge in ' + REPO + '", NOT "unused": the repository is a snapshot, structural edges built from view text are blind ' +
+          'to ETL jobs, and an object created after the build has no edges at all.\n' +
+          'If the tool errors with 3810 on a column ending _FQ, that is a known upstream defect in graph_bfsLevels only -- report it verbatim and set ' +
+          'status error; do not retry with a different repository.',
+          { label: 'structural:' + obj, phase: 'Probe', agentType: AGENT, schema: PROBE, effort: 'medium' }
+        )
+      }
+    ] : [])).then(function (p) {
       const got = p.filter(Boolean)
       if (got.length < 3) log(obj + ': ' + (3 - got.length) + ' probe agent(s) returned nothing; those probes count as UNKNOWN for this object')
       return { resolved: r, probes: got, probesLost: 3 - got.length }
@@ -164,7 +190,10 @@ const assessments = (await pipeline(
       'Rules: risk is HIGH whenever any probe found a dependent object, a referencing view, macro or procedure, a writing statement, a join index, ' +
       'a referential constraint or a trigger. Risk is UNKNOWN -- never LOW -- whenever a probe errored, was unavailable, returned nothing from an agent, ' +
       'or DBQL coverage cannot be established. MEDIUM when the probes ran and show only reads by a small set of users with a last access older than the window midpoint. ' +
-      'LOW is reserved for the case where all three probes ran cleanly, found no dependents and no reads, AND you state the DBQL window that bounds the claim. ' +
+      'LOW is reserved for the case where EVERY probe dispatched for this object ran cleanly, found no dependents and no reads, AND you state the DBQL window that bounds the claim. ' +
+      'When a structural-lineage probe is present it is the stronger evidence: DBQL shows what RAN, structural lineage shows what REFERENCES the object, and a view that ' +
+      'exists but was never queried appears only in the latter. A structural probe finding any dependent makes the risk HIGH regardless of what DBQL showed. ' +
+      'When NO structural probe is present, LOW must also carry the caveat that no edge repository was consulted, so nothing rules out an unqueried referencing object. ' +
       'Write "no usage recorded in the available DBQL window" for an empty probe; never write "unused" or "safe to drop".\n' +
       'You never write a DROP statement and never recommend running one. verifyFirst lists what a human should do before deciding: rename or REVOKE access and wait a cycle, ' +
       'confirm a backup or an archive copy exists, check external schedulers and BI catalogs, look for macros, procedures and triggers that reference it. ' +

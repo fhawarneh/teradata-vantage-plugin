@@ -72,31 +72,11 @@ jobs:
       - name: claude plugin validate --strict (marketplace)
         run: claude plugin validate . --strict
 
-      # Same archive layout as scripts/release.py: one top-level `teradata-vantage/` folder, caches and
-      # compiled files excluded. Built here with the standard library so the job depends on no extra tool.
+      # ONE code path builds the archive. scripts/release.py --zip-only packages the version already in
+      # plugin.json, so what this job publishes is byte-for-byte what a maintainer builds locally. An
+      # inline reimplementation here would drift from the script's exclude rules without anyone noticing.
       - name: Build the plugin archive
-        run: |
-          python - "${{ steps.version.outputs.version }}" <<'PY'
-          import sys, zipfile
-          from pathlib import Path
-
-          version = sys.argv[1]
-          plugin = Path("plugins/teradata-vantage")
-          out = Path("dist") / f"teradata-vantage-{version}.zip"
-          out.parent.mkdir(parents=True, exist_ok=True)
-          exclude_dirs = {"__pycache__", ".pytest_cache"}
-          exclude_suffixes = {".pyc", ".pyo"}
-          files = [
-              p for p in sorted(plugin.rglob("*"))
-              if p.is_file()
-              and p.suffix not in exclude_suffixes
-              and not (exclude_dirs & set(p.relative_to(plugin).parts))
-          ]
-          with zipfile.ZipFile(out, "w", compression=zipfile.ZIP_DEFLATED) as zf:
-              for p in files:
-                  zf.write(p, arcname=str(Path("teradata-vantage") / p.relative_to(plugin)))
-          print(f"wrote {out} ({len(files)} files, {out.stat().st_size} bytes)")
-          PY
+        run: python plugins/teradata-vantage/scripts/release.py --zip-only --repo .
 
       # `claude plugin validate` reads a directory, not an archive, so unpack first.
       - name: Validate the archive contents

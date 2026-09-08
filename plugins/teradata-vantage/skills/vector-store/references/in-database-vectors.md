@@ -15,7 +15,7 @@ client. INSERT/DROP prompt for approval under the write gate.
 | `SYSUDTLIB.VECTOR`, `SYSUDTLIB.VECTOR32` | UDTs usable directly in `CREATE TABLE`; VECTOR32 = 32-bit floats, ≤ 32,768 bytes → ≤ 8,192 dims |
 | `TD_SYSFNLIB.TD_VECTORDISTANCE` | top-K nearest neighbours; returns **distance** (lower = more similar; ~0.005 near vs ~0.63 far on cosine) |
 | `TD_SYSFNLIB.TD_VECTORNORMALIZE` | unit-vector / other normalisation of embedding columns |
-| `mldb.ONNXEmbeddings` (BYOM package) | server-side sentence embeddings from an ONNX model + tokenizer stored in tables |
+| `TD_MLDB.ONNXEmbeddings` (BYOM package) | server-side sentence embeddings from an ONNX model + tokenizer stored in tables |
 | `ivsm.tokenizer_encode`, `ivsm.IVSM_score`, `ivsm.vector_to_columns` | the alternative in-database embedding pipeline (IVSM package) |
 | `TD_KMEANS`, `TD_KMEANSPREDICT`, `TD_SILHOUETTE` | ClearScape clustering; accept VECTOR32 input |
 
@@ -134,7 +134,12 @@ SELECT * FROM TD_VECTORNORMALIZE (
 ) AS dt;    -- output column is still named emb
 ```
 
-## 5. Embeddings inside the database — `mldb.ONNXEmbeddings` (BYOM), the 3-ON-clause form
+## 5. Embeddings inside the database — `TD_MLDB.ONNXEmbeddings` (BYOM), the 3-ON-clause form
+
+The BYOM functions live in **`TD_MLDB`**, not `mldb`. Measured on Vantage 20.00: `HELP FUNCTION
+mldb.ONNXEmbeddings` fails with `Database 'mldb' does not exist`, and `TD_MLDB.ONNXEmbeddings`
+resolves. Older documentation and blog posts use the short name; qualify with `TD_MLDB` or check
+`DBC.FunctionsV` for the database your release installs them in.
 
 Prerequisites: the BYOM package installed; an ONNX sentence-embedding model and its tokenizer loaded into two
 tables — `<model_db>.onnx_models (model_id, model)` and `<model_db>.onnx_tokenizers (model_id, tokenizer)`.
@@ -145,7 +150,7 @@ CREATE MULTISET VOLATILE TABLE emb_in (id INTEGER, txt VARCHAR(8000) CHARACTER S
 INSERT INTO emb_in VALUES (1, 'text to embed');       -- ASCII or UNICODE-safe text
 
 CREATE MULTISET VOLATILE TABLE emb_out AS (
-  SELECT * FROM mldb.ONNXEmbeddings (
+  SELECT * FROM TD_MLDB.ONNXEmbeddings (
     ON (SELECT id, txt FROM emb_in)
     ON (SELECT model_id, model     FROM <model_db>.onnx_models     WHERE model_id = '<model_id>') DIMENSION
     ON (SELECT model_id, tokenizer FROM <model_db>.onnx_tokenizers WHERE model_id = '<model_id>') DIMENSION

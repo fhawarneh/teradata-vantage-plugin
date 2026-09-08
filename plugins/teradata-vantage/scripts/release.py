@@ -155,13 +155,23 @@ def tag_release(plugin: Path, version: str, dry_run: bool) -> None:
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
     ap = argparse.ArgumentParser(description="Bump, changelog, zip and tag a plugin release.")
-    ap.add_argument("--bump", choices=("patch", "minor", "major"), required=True)
+    ap.add_argument("--bump", choices=("patch", "minor", "major"),
+                    help="required unless --zip-only is given")
+    ap.add_argument("--zip-only", action="store_true",
+                    help="build dist/<plugin>-<current version>.zip from the version already in "
+                         "plugin.json and stop: no bump, no CHANGELOG edit, no tag. This is the one "
+                         "code path that builds the archive, so CI and a local build cannot diverge.")
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--no-tag", action="store_true", help="do not run `claude plugin tag --push`")
     ap.add_argument("--skip-validate", action="store_true", help="skip the validate_plugin.py preflight")
     ap.add_argument("--repo", type=Path, default=REPO_DIR)
     ap.add_argument("--date", default=_dt.date.today().isoformat(), help="date for the CHANGELOG heading (default: today)")
     args = ap.parse_args(argv)
+
+    if not args.bump and not args.zip_only:
+        ap.error("--bump is required unless --zip-only is given")
+    if args.bump and args.zip_only:
+        ap.error("--bump and --zip-only are mutually exclusive: --zip-only packages the current version")
 
     repo = args.repo.resolve()
     plugin = repo / "plugins" / PLUGIN_NAME
@@ -171,6 +181,14 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             raise ReleaseError(f"{pj_path} not found")
         data, text = read_plugin_json(pj_path)
         current = str(data.get("version", ""))
+
+        if args.zip_only:
+            # Package what is already committed. The release workflow calls this so the archive it
+            # publishes is byte-for-byte the one a maintainer builds locally.
+            out = build_zip(plugin, repo / "dist", current, args.dry_run)
+            print(f"release: packaged {PLUGIN_NAME} {current} -> {out}")
+            return 0
+
         new = bump_version(current, args.bump)
         assert_marketplace_has_no_version(repo)
         print(f"release: {PLUGIN_NAME} {current} -> {new}{'  (dry run)' if args.dry_run else ''}")
