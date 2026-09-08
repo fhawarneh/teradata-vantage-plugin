@@ -161,6 +161,7 @@ Four prompts that each put a different part of the plugin to work. Run them afte
 | `profile` | Data quality: nulls, blanks, negatives, distributions, completeness |
 | `archive` | Moving cold data to object storage as Parquet (NOS) or Apache Iceberg, and back |
 | `vector-store` | Teradata Enterprise Vector Store, and in-database vectors (`VECTOR32`, `TD_VECTORDISTANCE`) |
+| `pipelines` | dbt models through the dbt-teradata adapter and Airflow DAGs through the Teradata provider: the profile, incremental strategies, primary-index config, and which operator to use |
 | `client-development` | Application code that talks to Vantage: `teradatasql`, `teradataml`, SQLAlchemy, JDBC; the qmark parameter style, session mode, pooling |
 | `lineage` | What depends on an object, what feeds it, what breaks if it changes; cycles, root objects and migration waves, over an edge repository |
 | `analytics` | Running analytics in the database instead of extracting to a notebook: the ClearScape `TD_*` fit/transform functions, and BYOM scoring of ONNX, PMML, H2O, Dataiku and DataRobot models |
