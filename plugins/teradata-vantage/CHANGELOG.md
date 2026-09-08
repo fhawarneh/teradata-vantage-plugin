@@ -63,8 +63,11 @@ Everything below was executed against a live Vantage 20.00 before being written.
 
 ### Context cost
 
-19 skills and 7 agents. Measure with `claude plugin details` against a clean-HOME install from GitHub;
-the local-directory install reads roughly 1.46x higher, a discrepancy documented at 0.2.0.
+**~4,139 always-on tokens** for 19 skills and 7 agents, measured with `claude plugin details` against a
+clean-HOME install of this release from GitHub — up from ~3,389 at 0.3.0, so four skills cost about 190
+tokens each. Reference material still loads only when a skill needs it. The local-directory install
+reads roughly 1.46x higher; that discrepancy is documented at 0.2.0 and the clean-install figure is the
+one that reflects what a user gets.
 
 ## 0.3.0 (2026-09-08)
 
