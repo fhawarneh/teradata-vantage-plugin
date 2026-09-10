@@ -287,6 +287,44 @@ credential source, the runtimes present and the guard state, and it works with n
 correct credentials, error `3524`, a hung logon, duplicate toolsets, a stale venv pin, silent linting. The launcher's
 own diagnostics go to stderr, which `claude --debug` shows.
 
+### `/plugin` shows "Invalid MCP server config: Missing environment variables"
+
+```
+1 error:
+  Invalid MCP server config for 'teradata': Missing environment variables:
+  user_config.database_uri, user_config.mcp_url, user_config.server_extras
+```
+
+**This is a display artifact, not a failure.** It means those plugin options are unset, which on a fresh
+install is true and expected — the plugin is designed to install and self-diagnose before it is
+connected.
+
+It is also, for two of the three, unavoidable. `mcp_url` and `server_extras` are optional and empty is
+the correct value for most people, but Claude Code refuses to store an empty option — `--config
+mcp_url=''` returns *"value is empty. Omit the flag to leave `mcp_url` unset"* — so an option that
+should be blank can never be marked set, and `.mcp.json` references it either way.
+
+What was measured, so you can trust that nothing is broken:
+
+- A **set** option reaches the server. With `database_uri` configured, the launcher recorded
+  `inputs_present=... TERADATA_MCP_OPTION_DATABASE_URI ...` and `credential_source=plugin-option`.
+- An **unset** option is omitted from the environment entirely — not passed as an empty string, and not
+  passed as an unsubstituted `${...}` literal. The launcher never sees it, and `val()` would neutralise
+  it if it did.
+
+So the reference is not removed from `.mcp.json`: dropping it would break the plugin-option route
+altogether, and that route is the one that keeps your connection string in Claude Code's secure storage
+rather than in a file on disk.
+
+Check what the server actually did rather than reading the badge:
+
+```bash
+cat "$CLAUDE_PLUGIN_DATA/last-launch.txt"     # mode, credential_source, url_source, inputs_present
+```
+
+and run `/teradata-vantage:setup`, which reports the mode that will run and where the credential came
+from. If those look right, the plugin is working regardless of what the manager shows.
+
 ### `EPERM: operation not permitted, rename` when installing on Windows
 
 ```
