@@ -287,6 +287,46 @@ credential source, the runtimes present and the guard state, and it works with n
 correct credentials, error `3524`, a hung logon, duplicate toolsets, a stale venv pin, silent linting. The launcher's
 own diagnostics go to stderr, which `claude --debug` shows.
 
+### `EPERM: operation not permitted, rename` when installing on Windows
+
+```
+Failed to install plugin "teradata-vantage@teradata-plugins": EPERM: operation not permitted,
+rename 'C:\Users\<you>\.claude\plugins\cache\temp_local_..._xxxxxx'
+    -> 'C:\Users\<you>\.claude\plugins\cache\teradata-vantage'
+```
+
+This happens in Claude Code's plugin cache, before any of this plugin's own code runs, and it is not
+caused by the package's contents — checked: no path exceeds 135 characters against Windows' 260 limit,
+and there are no case-only filename collisions, reserved device names, illegal characters or symlinks.
+
+Windows cannot rename onto an existing directory, and it raises `EPERM` when any process holds a handle
+to a file being moved. On a managed corporate machine there are usually four candidates:
+
+1. **A leftover `teradata-vantage` directory from an earlier attempt.** The commonest cause.
+2. **A running Claude Code session** holding the old plugin directory open.
+3. **OneDrive syncing the user profile** — `C:\Users\<you>\` is frequently redirected, and the sync
+   client takes file locks.
+4. **Defender or endpoint protection** scanning the freshly extracted files.
+
+In order:
+
+```powershell
+# 1. close every Claude Code session and terminal first, then:
+Remove-Item -Recurse -Force "$env:USERPROFILE\.claude\plugins\cache\teradata-vantage" -EA SilentlyContinue
+Get-ChildItem "$env:USERPROFILE\.claude\plugins\cache" -Filter "temp_local_*" |
+    Remove-Item -Recurse -Force -EA SilentlyContinue
+
+# 2. retry
+claude plugin install teradata-vantage@teradata-plugins
+```
+
+If it recurs, pause OneDrive (or exclude `.claude`), or add a Defender exclusion for
+`%USERPROFILE%\.claude\plugins`, and retry. As a fallback, clone the repository and point
+`marketplace add` at the local path — that install path does not stage through the same temp rename.
+
+Note separately that Windows needs a POSIX shell for the server to start at all; see
+[Platform support](#platform-support).
+
 One timing note. `.mcp.json` sets a per-server `timeout` of 180 000 ms: a hard wall clock on each tool call, which
 also acts as a floor on the idle timeout, so an idle call is never aborted sooner. On Claude Code 2.1.212 or later a
 main-conversation tool call still running after two minutes moves to a background task, so a hung logon shows up in
